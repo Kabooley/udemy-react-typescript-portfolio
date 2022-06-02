@@ -1,56 +1,57 @@
-import * as esbuild from 'esbuild-wasm';
-import React, { useState, useEffect, useRef } from 'react';
-import ReactDOM from 'react-dom';
+import * as esbuild from "esbuild-wasm";
+import { useState, useEffect, useRef } from "react";
+import { createRoot } from "react-dom/client";
+// import ReactDOM from "react-dom";
+import { unpkgPathPlugin } from "./plugins/unpkg-path-plugin";
 
-const App = (): JSX.Element => {
-    const ref = useRef<any>();
-    const [input, setInput] = useState<string>('');
-    const [code, setCode] = useState<string>('');
+const App = () => {
+  const ref = useRef<any>();
+  const [input, setInput] = useState("");
+  const [code, setCode] = useState("");
 
-    useEffect(() => {
-        startService();
-    }, []);
+  const startService = async () => {
+    ref.current = await esbuild.startService({
+      worker: true,
+      wasmURL: "/esbuild.wasm",
+    });
+  };
+  useEffect(() => {
+    startService();
+  }, []);
 
-    const startService = async () => {
-        // serviceはトランスパイル、コンパイル、トランスポートに利用する
-        ref.current = await esbuild.startService({
-            worker: true,
-            // public/esbuild.wasmがあるから確認してねの命令
-            wasmURL: '/esbiuld.wasm',
-        });
-    };
+  const onClick = async () => {
+    if (!ref.current) {
+      return;
+    }
 
-    const onClick = async (): Promise<void> => {
-        if (!ref.current) return;
+    const result = await ref.current.build({
+      entryPoints: ["index.js"],
+      bundle: true,
+      write: false,
+      plugins: [unpkgPathPlugin()],
+    });
 
-        const result = await ref.current.transform(input, {
-            loader: 'jsx',
-            target: 'es2015',
-        });
+    console.log(result);
 
-        setCode(result);
-    };
+    setCode(result.outputFiles[0].text);
+  };
 
-    return (
-        <div>
-            <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-            ></textarea>
-            <div>
-                <button onClick={onClick}>Submit</button>
-            </div>
-            <pre>{code}</pre>
-        </div>
-    );
+  return (
+    <div>
+      <textarea
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+      ></textarea>
+      <div>
+        <button onClick={onClick}>Submit</button>
+      </div>
+      <pre>{code}</pre>
+    </div>
+  );
 };
 
-ReactDOM.render(<App />, document.querySelector('#root'));
-
-// https://stackoverflow.com/questions/71668256/deprecation-notice-reactdom-render-is-no-longer-supported-in-react-18
-// const root = ReactDOM.createRoot(document.getElementById('root'));
-// root.render(
-//     <React.StrictMode>
-//         <App />
-//     </React.StrictMode>
-// )
+const _root = document.getElementById("root");
+if (_root) {
+  const root = createRoot(_root);
+  root.render(<App />);
+}

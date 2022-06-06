@@ -11,15 +11,20 @@ export const unpkgPathPlugin = () => {
                 if (args.path === 'index.js') {
                     return { path: args.path, namespace: 'a' };
                 }
+
+                return {
+                    namespace: 'a',
+                    path: `https://unpkg.com/${args.path}`,
+                };
                 // NOTE: unpkg.comでtiny-test-pkgというとりあえずのモジュールを取得してみる
                 //
                 // pathの解決方法はonResolveに
-                else if (args.path === 'tiny-test-pkg') {
-                    return {
-                        path: 'https://unpkg.com/tiny-test-pkg@1.0.0/index.js',
-                        namespace: 'a',
-                    };
-                }
+                // else if (args.path === 'tiny-test-pkg') {
+                //     return {
+                //         path: 'https://unpkg.com/tiny-test-pkg@1.0.0/index.js',
+                //         namespace: 'a',
+                //     };
+                // }
             });
 
             // pathからファイルを返すパート
@@ -29,14 +34,8 @@ export const unpkgPathPlugin = () => {
                 if (args.path === 'index.js') {
                     return {
                         loader: 'jsx',
-                        // tiny-test-pkgからモジュールを取得するので以下は無効化
-            //             contents: `
-            //   import message from 'tiny-test-pkg';
-            //   console.log(message);
-            // `,
-                      // 
                         contents: `
-                          const message = require('tiny-test-pkg');
+                          const message = require('medium-test-pkg');
                           console.log(message);
                           `,
                     };

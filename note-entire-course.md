@@ -1276,22 +1276,184 @@ export const unpkgPathPlugin = () => {
 
 これでモジュールをネットワークから取得できるようになった!
 
-
 まとめ：
 
-- プラグインはESBuildの機能をカスタマイズしたものである
+-   プラグインは ESBuild の機能をカスタマイズしたものである
 
-- プラグインは`name`と`setup`からなるオブジェクトである
+-   プラグインは`name`と`setup`からなるオブジェクトである
 
 講義ではそのオブジェクトを返す関数を定義した
 
-- プラグインのsetup関数は、ビルド API コールのたびに一度だけ実行されます。
+-   プラグインの setup 関数は、ビルド API コールのたびに一度だけ実行されます。
 
-つまりコマンドラインでbuildコマンドを打ったら、
+つまりコマンドラインで build コマンドを打ったら、
 プラグインがあれば一度だけ実行される
 
-- プラグインはonResolve、onLoadという2つの関数をもつ
-
+-   プラグインは onResolve、onLoad という 2 つの関数をもつ
 
 #### Refactor ESBuild Plugin
 
+args.path が未知の場合に対処する
+
+これまで使っていた URL: https://unplkg.com/tiny-test-pkg@1.0.0/index.js
+
+今回取得したい URL:
+
+-   https://unplkg.com/medium-test-pkg@1.0.0/index.js
+-   https://unplkg.com/medium-test-pkg@1.0.0/medium.js
+
+```TypeScript
+// mediu-test-pkg/index.jsの中身
+
+const toUpperCase = require('./utils');
+
+const message = 'hi there';
+
+module.exports = toUpperCase(message);
+
+// medium-test-pkg/utils.js
+
+module.exports = function (str) {
+  return str.toUpperCase();
+};
+```
+
+これに対応するために、Build.onResolve()と Build.onLoad を次のように変更した
+
+```TypeScript
+import * as esbuild from 'esbuild-wasm';
+import axios from 'axios';
+
+export const unpkgPathPlugin = () => {
+    return {
+        name: 'unpkg-path-plugin',
+        setup(build: esbuild.PluginBuild) {
+            build.onResolve({ filter: /.*/ }, async (args: any) => {
+                console.log('onResolve', args);
+                if (args.path === 'index.js') {
+                    return { path: args.path, namespace: 'a' };
+                }
+                return {
+                    namesapce: 'a',
+                    // NOTE: いかなるpathを受け付けるようになった
+                    path: `https://unpkg.com/${args.path}`,
+                };
+            });
+
+            build.onLoad({ filter: /.*/ }, async (args: any) => {
+                console.log('onLoad', args);
+
+                if (args.path === 'index.js') {
+                    return {
+                        loader: 'jsx',
+                        // NOTE: 'medium-test-pkg'をrequireする
+                        contents: `
+                          const message = require('medium-test-pkg');
+                          console.log(message);
+                          `,
+                    };
+                }
+                const { data } = await axios.get(args.path);
+                console.log(data);
+
+                return {
+                    loader: 'jsx',
+                    contents: data,
+                };
+            });
+        },
+    };
+};
+
+```
+
+これを実行するとエラーになる
+
+```bash
+onResolve {path: 'index.js', importer: '', namespace: '', resolveDir: ''}
+
+onLoad {path: 'index.js', namespace: 'a'}
+
+onResolve {path: 'medium-test-pkg', importer: 'index.js', namespace: 'a', resolveDir: ''}
+
+onLoad {path: 'https://unpkg.com/medium-test-pkg', namespace: 'a'}
+
+# 上記の通り、medium-test-pkgにはアクセスできている
+# 以下のように出力できている
+
+const toUpperCase = require('./utils');
+
+const message = 'hi there';
+
+module.exports = toUpperCase(message);
+
+onResolve {path: './utils', importer: 'https://unpkg.com/medium-test-pkg', namespace: 'a', resolveDir: ''}
+
+# 下記を見ると、medium-test-pkg/utils.jsではなく
+# 'https://unpkg.com/./utils'というURLになっている
+onLoad {path: 'https://unpkg.com/./utils', namespace: 'a'}
+
+ /*!
+ * utils <https://github.com/jonschlinkert/utils>
+ *
+ * Copyright (c) 2014 Jon Schlinkert.
+ * Licensed under the MIT license.
+ */
+
+'use strict';
+
+module.exports = require('./lib');
+
+onResolve {path: './lib', importer: 'https://unpkg.com/./utils', namespace: 'a', resolveDir: ''}
+
+onLoad {path: 'https://unpkg.com/./lib', namespace: 'a'}
+
+# ...
+```
+
+ということで、変な URL にアクセスしようとしていたと
+
+なぜこんな URL が生成されたのか？
+
+理由は
+
+`https://unplkg.com/medium-test-pkg@1.0.0/index.js`のモジュールが
+
+`require('./utils')`で要求しているから
+
+つまり、
+
+`https://unpkg.com/medium-test-pkg/index.js`から require を見つけた
+
+plugin はこれの解決を試みる
+
+onResolve()で
+
+```JavaScript
+onResolve {path: './utils', importer: 'https://unpkg.com/medium-test-pkg', namespace: 'a', resolveDir: ''}
+```
+
+と解決される
+
+つまり、`path: './utils'`だから onLoad で取得するときには
+
+`args.path === ./utils'`なので`https://unpkg.com/medium-test-pkg/${args.path}`にすると
+
+先のような URL になってしまう
+
+ほしいのは`https://unpkg.com/medium-test-pkg/utils.js`である
+
+onResolve()でこの URL になるように調整しなくてはならない
+
+解決へのアプローチ：
+
+**URL オブジェクトを使う**
+
+https://developer.mozilla.org/ja/docs/Web/API/URL
+
+```JavaScript
+// Syntax
+url = new URL(url, [base])
+```
+
+url: 絶対 URL または相対 URL。url が相対 URL である場合、base URL は必須である

@@ -1451,9 +1451,136 @@ onResolve()でこの URL になるように調整しなくてはならない
 
 https://developer.mozilla.org/ja/docs/Web/API/URL
 
+URLコンストラクタ：
+
 ```JavaScript
 // Syntax
 url = new URL(url, [base])
 ```
 
 url: 絶対 URL または相対 URL。url が相対 URL である場合、base URL は必須である
+
+**baseURLに/を付けるかつけないかでhrefの結果が変わる！**
+
+```JavaScript
+// /なし
+new URL('./utils', 'https://unpkg.com/medium-test-pkg');
+// 最後に/をつけるとhrefの解決が望みどおりになる
+new URL('./utils', 'https://unpkg.com/medium-test-pkg/');
+```
+
+出力結果
+
+```bash
+# hrefの解決に違いがあることがわかる
+href: "https://unpkg.com/utils"
+# こっちがほしい方
+href: "https://unpkg.com/medium-test-pkg/utils"
+```
+
+これを用いて相対パスの問題を解決する
+
+```TypeScript
+export const unpkgPathPlugin = () => {
+  return {
+    name: 'unpkg-path-plugin',
+    setup(build: esbuild.PluginBuild) {
+      build.onResolve({ filter: /.*/ }, async (args: any) => {
+        console.log('onResolve', args);
+        if (args.path === 'index.js') {
+          return { path: args.path, namespace: 'a' };
+        }
+
+        // NOTE: 相対パス解決
+        if (args.path.includes('./') || args.path.includes('../')) {
+          return {
+            namespace: 'a',
+            path: new URL(args.path, args.importer + '/').href,
+          };
+        }
+          // ...
+      }
+      // ...
+    }
+    // ...
+  }
+  // ...
+}
+```
+
+これで相対パスの解決ができた
+
+#### Failure reason to find nested package
+
+`nested-test-package`からutils.jsを見つける
+このパッケージは、直下にindex.jsがあるわけではなくて、
+下記のようにsrc/helpers/を間に挟んでいる
+
+中身：
+
+```bash
+# meidum-test-pkg
+.
+｜-- medium-test-pkg/
+        |
+        |-- index.js
+        |-- utils.js
+
+# nested-test-pkg
+.
+｜-- nested-test-pkg/
+        |
+        |-- src/
+              |
+              |-- helpers/
+                    |
+                    |-- utils.js
+```
+
+このように今のところネストされたファイルは解決できない
+
+なぜか？
+
+- FOUND `const message = require('nested-test-pkg');`
+- onResolve `{path: 'nested-test-pkg', importer: 'index.js'}`
+- onLoad gets `{path: 'https://unplg.com/nested-test-pkg'}`
+- FOUND `./helpers/utils`
+
+NOTE: ここのimporterが正しくない
+- onResolve `{path: 'helpers/utils', importer: 'https://unpkg.com/nested-tesst-pkg'}`
+- onLoad `{path: 'https://unpkg.com/nested-tesst-pkg/helpers/utils'}`
+- 404 そんなURLは存在しないエラー
+
+正しくは`https://unpkg.com/nested-tesst-pkg/src/index.js`
+
+
+ということで、ネストされたパッケージを見つける場合とパッケージの直下のファイルを見つけるのではアプローチが異なる
+
+ということでアプローチ方法を区別することにした
+
+NPMパッケージ取得アプローチの分岐：
+
+1. packageのメインファイルをfetchするとき
+
+`https://unpkg.com/` + package name
+
+これまでの方法。
+
+こんなURLになる
+
+`https://unpkg.com/nested-test-pkg`
+
+上記のURLは実際には次を意味する
+
+`https://unpkg.com/nested-test-pkg/src/index.js`
+
+
+
+2. packageの他のファイルをfetchするとき
+
+`https://unpkg.com/` 
+  + 最後のファイルが見つかったディレクトリ
+  + このファイルが要求文
+
+  新しく実装する方法。
+

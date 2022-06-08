@@ -1772,6 +1772,12 @@ const plugin = {
 
 **コールバック関数はどうやってパスを解決するのかをカスタマイズできる**
 
+コールバック関数の引数は読み取ったpathの情報であり
+
+コールバック関数の戻り値は解決されたpathである。
+
+
+
 コールバック関数は`path`等を含むオブジェクトを引数として受け取る
 
 上記の例では`args`である
@@ -1787,12 +1793,22 @@ const plugin = {
 
 最終的に、主に`path`と`namespace`を含めたオブジェクト(interface onResolveResult)を返す。
 
-この戻り値はBuild.onLoadが受け取る。
+onResolveResultのnamespaceを指定しないと、onLoadでローカル・ファイルシステムを調べるように命令してしまうので
+
+ローカル・ファイルシステムを指定しないようにするには何かしら空でない文字列を渡す必要がある。
+
+この戻り値は、Build.onLoadのコールバックが実行されるときに、そのpath解決に使用される。
 
 
 **build.onLoad():**
 
 `build.onLoad()`はすべてのユニークなpathとnamespaceの組み合わせのペアに対してそれぞれ実行される。
+
+いつもonResolve --> onLoadの順番で実行されるので
+
+ファイルの読み取り --> importパスを見つけたらonResolve --> 次にimportステートメントに対してonLoadする
+
+filterと一致するpathであったならばそれぞれのメソッドが実行される
 
 その役目はモジュールの中身とそれらをどうやって解釈するのかをESBuildに伝えることである
 
@@ -1814,4 +1830,220 @@ onLoadの引数：
 
 filterは指定された正規表現にマッチするファイル（URL）にだけコールバック関数を実行させるフィルターである
 
-なにをフィルタリングの対象というのは...どこのことだ？
+namespaceが指定されていれば、コールバックは指定したネームスペースのモジュール内のパスに対してのみ実行されます。
+
+onLoadのコールバック関数の引数:
+
+- path: モジュールの完全に解決されたパスです。名前空間が file である場合はファイルシステムのパスと考えるべきですが、 それ以外の場合はどのようなパスでもかまいません。
+
+- namespace: このファイルを解決した on-resolve コールバックによって設定された、モジュールのパスがある名前空間である。
+
+つまりbuild.onResolvedで返されたオブジェクトのnamespaceはここで引き継がれる
+
+
+##### 具体的な解決の様子
+
+ESBuildがentory pointのindex.jsから読み取るとする
+
+つぎのプラグインを使う場合
+
+```TypeScript
+import * as esbuild from 'esbuild-wasm';
+import axios from 'axios';
+
+export const unpkgPathPlugin = () => {
+  return {
+    name: 'unpkg-path-plugin',
+    setup(build: esbuild.PluginBuild) {
+      build.onResolve({ filter: /.*/ }, async (args: any) => {
+        console.log('onResolve', args);
+        if (args.path === 'index.js') {
+          return { path: args.path, namespace: 'a' };
+        }
+
+        if (args.path.includes('./') || args.path.includes('../')) {
+          return {
+            namespace: 'a',
+            path: new URL(
+              args.path,
+              'https://unpkg.com' + args.resolveDir + '/'
+            ).href,
+          };
+        }
+
+        return {
+          namespace: 'a',
+          path: `https://unpkg.com/${args.path}`,
+        };
+      });
+
+      build.onLoad({ filter: /.*/ }, async (args: any) => {
+        console.log('onLoad', args);
+
+        if (args.path === 'index.js') {
+          return {
+            loader: 'jsx',
+            contents: `
+              const message = require('nested-test-pkg');
+              console.log(message);
+            `,
+          };
+        }
+
+        const { data, request } = await axios.get(args.path);
+        return {
+          loader: 'jsx',
+          contents: data,
+          resolveDir: new URL('./', request.responseURL).pathname,
+        };
+      });
+    },
+  };
+};
+
+```
+
+次の通りに解決される。
+
+- ビルド開始
+- (Entry Pointの)index.jsを読み取る
+- プラグインunpkg-path-plugin.tsを実行
+- onResolve()の条件分岐で次が実行される
+
+```TypeScript
+// path === index.jsだから
+if (args.path === 'index.js') {
+    return { path: args.path, namespace: 'a' };
+}
+```
+
+args.pathは、基礎となるモジュールのソースコードにある未解決のパスをそのまま表したものであるはずだけど
+index.jsのなかのimport文の何かではなくてindex.js自身であるのは
+たぶんエントリーポイントであることが関係しているのかも。
+（つまり、内部的にindex.jsをimportしていることになっているのかも）
+
+- onLoad()が実行されて
+
+```JavaScript
+{path: "index.js", namespace: 'a'}
+```
+
+を受け取って
+
+```JavaScript
+if (args.path === 'index.js') {
+    return {
+    loader: 'jsx',
+    contents: `
+        const message = require('nested-test-pkg');
+        console.log(message);
+    `,
+    };
+}
+```
+
+が実行される。
+
+onLoadでcontentsが指定されるともうそれ以上そのファイル（index.js）でプラグインを実行しなくなる。
+
+なのでindex.jsで
+
+```JavaScript
+import * as esbuild from "esbuild-wasm";
+import { useState, useEffect, useRef } from "react";
+import { createRoot } from "react-dom/client";
+// import ReactDOM from "react-dom";
+import { unpkgPathPlugin } from "./plugins/unpkg-path-plugin";
+```
+
+とたくさんimport文があるけど一切無視される（プラグインがこれ以上このファイルで実行されないという意味で）
+
+ということで次は、contentsのなかで記述された、`const message = require('nested-test-pkg');`の解決に移動する。
+
+- onResolve()でargs.path: 'nested-test-pkg'を解決する
+
+return `{path: 'nested-test-pkg', importer: 'index.js', namespace: 'a', resolveDir: ''}`
+
+こうしてみると`importer`とは`nested-test-pkg`を要求しているファイルのことですね。
+
+```JavaScript
+return {
+    namespace: 'a',
+    path: `https://unpkg.com/${args.path}`,
+};
+```
+で解決される。なので...
+
+- onLoad()で`{path: "https://unpkg.com/nested-test-pkg", namespace: 'a'}`を取得する
+
+```JavaScript
+const { data, request } = await axios.get(args.path);
+
+return {
+    loader: "jsx",
+    contents: data,
+    resolveDir: new URL("./", request.responseURL).pathname,
+};
+```
+
+ちなみに`https://unpkg.com/nested-test-pkg`をGETリクエストするとリダイレクトされる。
+
+axios.get()の戻り値のrequestオブジェクトにはリダイレクトのURLがあって、それがrequest.responseURLである
+
+これをURLオブジェクトでpathnameだけ切り出す。
+
+```JavaScript
+hash: ""
+host: "unpkg.com"
+hostname: "unpkg.com"
+href: "https://unpkg.com/nested-test-pkg@1.0.0/src/"
+origin: "https://unpkg.com"
+password: ""
+pathname: "/nested-test-pkg@1.0.0/src/"
+port: ""
+protocol: "https:"
+search: ""
+```
+
+このpathnameをresolvedDirに指定するとどうなるか。
+
+> このモジュールのインポートパスをファイルシステム上の実際のパスに解決するときに使用するファイルシステムのディレクトリです。
+> **このディレクトリは、このモジュールの未解決のインポートパスの上で実行されるすべてのon-resolveコールバックに渡されます。**
+
+つまり、ネストされた未解決パスを見つけるたびに、onResolve()のresolveDirに必ず付与されるのである。
+
+であれば、ネストされた中のパスの解決はresolveDirがあるかどうかで条件分岐すれば解決できる。
+
+これは以降のログを見るとわかる。
+
+```JavaScript
+// 直前でonLoadが返したresolveDirを取得している
+onResolve {path: './helpers/utils', importer: 'https://unpkg.com/nested-test-pkg', namespace: 'a', resolveDir: '/nested-test-pkg@1.0.0/src'}
+// するとaxiosでrequestオブジェクトをチェックしてリダイレクトを確認することなく
+// resolveDirで指定した通りにリダイレクトURLに変換されている！
+onLoad {path: 'https://unpkg.com/nested-test-pkg@1.0.0/src/helpers/utils', namespace: 'a'}
+```
+
+つまり、resolveDirで指定しなかったら
+
+`https://unpkg.com/nested-test-pkg/.helpers/utils`でアクセスしてしまうが
+
+ちゃんとリダイレクト用のURL`https://unpkg.com/nested-test-pkg@1.0.0/src/helpers/utils`で解決してくれる
+
+NOTE: これは次の部分のおかげ
+
+```JavaScript
+// onResolve
+if (args.path.includes("./") || args.path.includes("../")) {
+    return {
+    namespace: "a",
+    path: new URL(
+        args.path,
+        "https://unpkg.com" + args.resolveDir + "/"
+    ).href,
+    };
+}
+```
+
+これで正しいURL（パス）が解決できた！
+

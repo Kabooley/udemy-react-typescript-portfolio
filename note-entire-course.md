@@ -1584,3 +1584,234 @@ NPMパッケージ取得アプローチの分岐：
 
   新しく実装する方法。
 
+
+#### 知識：HTTPのリダイレクト
+
+https://developer.mozilla.org/ja/docs/Web/HTTP/Redirections
+
+> URL リダイレクトは、 URL 転送とも呼ばれ、ページ、フォーム、ウェブアプリケーション全体などに二つ以上の URL のアドレスを与える技術です。 HTTP ではこの操作のために、特別な種類のレスポンスである HTTP リダイレクトを提供しています。
+
+今回でいえば、
+
+`https://unpkg.com/nested-test-pkg`というURLにアクセスすると
+
+サーバから「それはここ（`https://unpkg.com/nested-test-pkg/src/index.js`）のことだからそこにアクセスして」と返事が来て
+
+`https://unpkg.com/nested-test-pkg/src/index.js`へアクセスしなおす
+
+
+
+#### ネストされたパッケージを取得する機能の実装
+
+リダイレクトを検知してそこに介入する。
+
+1. axios.getからrequestオブジェクトを取得する
+
+リダイレクトの情報は、axiosのなかではaxios 
+
+```TypeScript
+// unpkg-path-plugins.ts
+
+export const unpkgPathPlugin = () => {
+    return {
+        name: 'unpkg-path-plugin',
+        setup(build: esbuild.PluginBuild) {
+
+          // ...
+
+            build.onLoad({ filter: /.*/ }, async (args: any) => {
+              // ...
+              // requestを取得するようにした
+                const { data, request } = await axios.get(args.path);
+                // ここでログを出力
+                console.log(request);
+                return {
+                    loader: 'jsx',
+                    contents: data,
+                };
+            });
+        },
+    };
+};
+
+```
+
+コンソールログの出力結果
+
+```JavaScript
+// requestオブジェクト
+
+XMLHttpRequest {onreadystatechange: null, readyState: 4, timeout: 0, withCredentials: false, upload: XMLHttpRequestUpload, …}
+
+// 中身
+
+onabort: ƒ handleAbort()
+onerror: ƒ handleError()
+onload: null
+onloadend: ƒ onloadend()
+onloadstart: null
+onprogress: null
+onreadystatechange: null
+ontimeout: ƒ handleTimeout()
+readyState: 4
+response: "const toUpperCase = require('./helpers/utils');\n\nconst message = 'hi there';\n\nmodule.exports = toUpperCase(message);\n"
+responseText: "const toUpperCase = require('./helpers/utils');\n\nconst message = 'hi there';\n\nmodule.exports = toUpperCase(message);\n"
+responseType: ""
+// 
+// NOTE: ここにレスポンスがあって、
+// レスポンスにリダイレクトするURLが含まれている
+// 
+responseURL: "https://unpkg.com/nested-test-pkg@1.0.0/src/index.js"
+responseXML: null
+status: 200
+statusText: ""
+timeout: 0
+upload: XMLHttpRequestUpload {onloadstart: null, onprogress: null, onabort: null, onerror: null, onload: null, …}
+withCredentials: false
+[[Prototype]]: XMLHttpRequest
+```
+これをURLオブジェクトでいじると
+
+```JavaScript
+// input
+new URL("./", "https://unpkg.com/nested-test-pkg@1.0.0/src/index.js")
+
+// output
+URL {origin: 'https://unpkg.com', protocol: 'https:', username: '', password: '', host: 'unpkg.com', …}
+
+// 中身
+hash: ""
+host: "unpkg.com"
+hostname: "unpkg.com"
+href: "https://unpkg.com/nested-test-pkg@1.0.0/src/"
+origin: "https://unpkg.com"
+password: ""
+// 
+// NOTE: これがほしいpath
+// 
+pathname: "/nested-test-pkg@1.0.0/src/"
+port: ""
+protocol: "https:"
+search: ""
+searchParams: URLSearchParams {}
+username: ""
+[[Prototype]]: URL
+```
+
+## まとめ ここまでのまとめ　すっごく簡単に
+
+web上で動作するコードエディタを作る。
+
+web上でコードを書く際に、on demandで必要なモジュールをその都度インストールするようにする
+
+その時にぶち当たる問題:
+
+- 1. NPMパッケージは通常ローカルファイルから探し出そうとする
+
+  しかし今回作成するのはweb上で動作するコードエディタなので、
+  ブラウザかサーバ上にモジュールパッケージがないとダメで
+  ブラウザの場合、ローカルファイルにアクセスできない。
+
+  なのでユーザが入力したコードからimport/require/exportがあったら
+  都度検査して必要なモジュールをNPMレジストリから取得するようにしないといけない
+
+- 2. webpackは１の問題のせいでバンドリングが不可能
+
+  なのでESBuildを使う。
+  ESBuildだと、開発者定義の独自pluginを導入出来て
+  機能を拡張できる。
+  このおかげでimport/require/exportの問題が解決できる
+
+- 3. NPMレジストリはlocalhost:3000からのアクセスは拒否する
+
+  つまり直接'react'くれとはNPMにリクエストできない。
+  これを解決してくれるサービスがあって、
+  `unpkg`という仲介してくれるサービスを使う
+
+- 4. ESBuildのバンドリングAPIは「ローカルファイルシステム」を要求する
+
+  つまりESBuildをそのまま使うと、結局ローカルファイルを要求されてしまうので
+  このデフォ機能を回避して拡張機能を導入させる
+  それがプラグイン
+
+  import/require/exportのコードを見つけて解決しようとするときに
+  プラグインが介入するようにさせる。
+  (プラグインはBuild APIの呼出のたびに実行される)
+
+- ESBuild Plugin
+
+プラグインは次の通り。
+
+`name`と`build`という特別な引数を持つメソッド`setup`というメソッドからなるオブジェクトである。
+
+```JavaScript
+const plugin = {
+  name: 'environment',
+  setup(build) {
+    build.onResolve(() => {});
+    build.onLoad(() => {});
+  }
+}
+```
+
+**build.onResolve():**
+
+```JavaScript
+  build.onResolve({ filter: /^env$/ }, args => ({
+    path: args.path,
+    namespace: 'env-ns',
+  }))
+```
+
+`build.onResolve`は、ESBuildがビルド中に`import`ステートメントを見つけるたびに実行される。
+
+引数にはfilterという正規表現を必ず渡す。
+このfilterに一致する「呼出（つまり`import`による呼出）」を
+見つけたとき（ビルド中のファイルから見つけたとき）、
+`build.onResolve`のコールバック関数を実行する。
+
+**コールバック関数はどうやってパスを解決するのかをカスタマイズできる**
+
+コールバック関数は`path`等を含むオブジェクトを引数として受け取る
+
+上記の例では`args`である
+
+`path`はビルド中に読み取ったソースコードのimportで指定していた未解決のパスである。
+
+`importer`は、解決すべきこのインポートを含むモジュールのパスである。
+要は読み取っている（ビルド中の）ファイルまたはURLである。
+
+`resolveDir`は
+
+> これは、インポートパスをファイルシステム上の実際のパスに解決するときに使用するファイルシステムのディレクトリです。ファイル名前空間内のモジュールでは、この値のデフォルトはモジュールパスのディレクトリ部分です。仮想モジュールでは、この値のデフォルトは空ですが、オンロードコールバックは仮想モジュールに解決ディレクトリを与えることもできます。その場合、そのファイル内の未解決のパスの解決コールバックに提供されます。
+
+最終的に、主に`path`と`namespace`を含めたオブジェクト(interface onResolveResult)を返す。
+
+この戻り値はBuild.onLoadが受け取る。
+
+
+**build.onLoad():**
+
+`build.onLoad()`はすべてのユニークなpathとnamespaceの組み合わせのペアに対してそれぞれ実行される。
+
+その役目はモジュールの中身とそれらをどうやって解釈するのかをESBuildに伝えることである
+
+```TypeScript
+// 例
+
+      build.onLoad({ filter: /.*/ }, async (args: any) => {
+
+        const { data, request } = await axios.get(args.path);
+        return {
+          loader: 'jsx',
+          contents: data,
+          resolveDir: new URL('./', request.responseURL).pathname,
+        };
+      });
+```
+
+onLoadの引数：
+
+filterは指定された正規表現にマッチするファイル（URL）にだけコールバック関数を実行させるフィルターである
+
+なにをフィルタリングの対象というのは...どこのことだ？

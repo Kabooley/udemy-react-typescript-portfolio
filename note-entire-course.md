@@ -2047,3 +2047,155 @@ if (args.path.includes("./") || args.path.includes("../")) {
 
 これで正しいURL（パス）が解決できた！
 
+
+
+#### 他のモジュールを要求してみる
+
+結論：
+
+- 他のモジュールを要求してもうまくいっている
+- 複数モジュールを要求してもうまくいっている
+
+build.onLoad()で返すcontentsで`react`を要求してみる
+
+すると次のエラーに遭遇する
+
+```bash
+
+ > a:https://unpkg.com/react:
+   warning: Define "process.env.NODE_ENV" when bundling for the browser
+
+```
+
+モジュールが次を含むからである
+
+```JavaScript
+  // a:https://unpkg.com/react
+  var require_react = __commonJS((exports, module) => {
+    "use strict";
+    if (process.env.NODE_ENV === "production") {
+      module.exports = require_react_production_min();
+    } else {
+      module.exports = require_react_development();
+    }
+  });
+  ```
+
+  しかし結果うまくいっている。
+
+  `react-dom`でも同様
+
+#### `process.env.NODE_ENV`などの解決
+
+先の警告：
+
+```bash
+ > a:https://unpkg.com/react:
+   warning: Define "process.env.NODE_ENV" when bundling for the browser
+
+```
+
+これを解決する。
+
+ESBuild Build APIを使う。
+
+https://esbuild.github.io/api/#define
+
+> これはグローバル識別子を定数に置き換える機能を提供する。
+> ビルド時のあるコードの挙動を、そのコードを変更することなく変更することができる
+
+公式の例：
+
+```JavaScript
+let js = 'hooks = DEBUG && require("hooks")';
+
+require('esbuild').transformSync(js, {
+  define: { DEBUG: 'true' },
+});
+
+// {
+//   code: 'hooks = require("hooks");\n',
+//   map: '',
+//   warnings: []
+// }
+
+require('esbuild').transformSync(js, {
+  define: { DEBUG: 'false' },
+})
+
+// {
+//   code: 'hooks = false;\n',
+//   map: '',
+//   warnings: []
+// }
+```
+
+jsの中身が置換されるのだと思う。
+
+実際に使ってみる
+
+```TypeScript
+// index.ts
+const App = () => {
+
+    // ...
+
+    const onClick = async () => {
+        if (!ref.current) {
+            return;
+        }
+
+        const result = await ref.current.build({
+            entryPoints: ['index.js'],
+            bundle: true,
+            write: false,
+            plugins: [unpkgPathPlugin()],
+            // NOTE: 今回追加したプロパティ
+            // define property
+            define: {
+                'process.env.NODE_ENV': '"production"',
+                // NOTE: globalはブラウザならwindow, Nodeならglobal
+                global: 'window',
+            },
+        });
+
+        console.log(result);
+
+        setCode(result.outputFiles[0].text);
+    };
+
+    return (
+      // ...
+    );
+};
+
+```
+
+これで再度`react`を要求してみると先の警告が消えた
+
+#### bonus lecture: モジュールのバージョン
+
+`import React from 'react'`とするとどのバージョンがやってくるのか
+
+
+## Section9: Caching For Big Performance Gains
+
+パフォーマンス最適化のコーナー。
+
+モジュールを取得するたびに大量のリクエストを送信している。
+モジュールに必要なファイルをすべて取得するためであるが
+中には同じファイルを再度ダウンロードする可能性もあり無駄も多い。
+
+なのでこれからは
+
+`build.onLoad()` --> `unpkg.com`という流れから
+
+`build.onLoad()` --> `Cache` --> `unpkg.com`というように、
+
+キャッシュ・レイヤーを追加する。
+
+`IndexedDB`を使う...使いたいけどブラウザ内でそれを使うのは面倒であるようです
+
+かわりに`localforage`というNPMパッケージを使う。
+
+

@@ -2198,4 +2198,126 @@ const App = () => {
 
 かわりに`localforage`というNPMパッケージを使う。
 
+https://www.npmjs.com/package/localforage
 
+#### Implement chaching layer
+
+簡単な使用例:
+
+ローカルストレージのように使える
+
+```TypeScript
+import localForage from 'localforage';
+
+const fileCache = localForage.createInstance({
+    name: 'filecache',
+});
+
+(async () => {
+    await fileCache.setItem('color', 'red');
+    const color = await fileCache.getItem('color');
+    console.log(color);
+})();
+```
+
+Dev Tools `Application` の`Storage`セクションからストレージの様子がモニターできる
+
+`Storage` `IndexedDB` `keyvaluepairs`から。
+
+
+導入してみる：
+
+- キャッシュが残っているのか確認する
+- 一致するキャッシュがあればそれを返し
+- なければ新たなキャッシュを保存する
+
+```TypeScript
+
+  build.onLoad({ filter: /.*/ }, async (args: any) => {
+      console.log('onLoad', args);
+
+      if (args.path === 'index.js') {
+          return {
+              loader: 'jsx',
+              contents: `
+    const message = require('react-dom');
+    console.log(message);
+  `,
+          };
+      }
+
+      // If there is cache key that same as args.path
+      const cachedResult = await localForage.getItem(args.path);
+
+      if(cachedResult) {
+        // Then return it.
+          return cachedResult;
+      }
+
+      // If no,
+      const { data, request } = await axios.get(args.path);
+      const result =  {
+          loader: 'jsx',
+          contents: data,
+          resolveDir: new URL('./', request.responseURL).pathname,
+      };
+
+      // Save that result into cache and return it.
+      await fileCache.setItem(args.path, result);
+      return result;
+  });
+
+```
+
+このままだとTypeErrorになる。
+
+onLoadの戻り値の型と一致しない。
+
+要は`interface onLoadResult`を満たせばいい。
+
+型付けをした
+
+```TypeScript
+
+  // Is there any cache key is same as args.path
+  const cachedResult =
+      await localForage.getItem<esbuild.OnLoadResult>(args.path);
+
+  if (cachedResult) {
+      return cachedResult;
+  }
+
+  // args.pathは常に一意の識別子として使える
+  const { data, request } = await axios.get(args.path);
+  // Genericsを指定する
+
+  const result: esbuild.OnLoadResult = {
+      loader: 'jsx',
+      contents: data,
+      resolveDir: new URL('./', request.responseURL).pathname,
+  };
+
+  // Save that result into cache and return it.
+  await fileCache.setItem<esbuild.OnLoadResult>(
+      args.path,
+      result
+  );
+  return result;
+
+```
+
+これで実行してみてSubmitボタンを押すと
+
+ストレージに新たに保存されたパッケージが確認できる
+
+たとえばこの後に変更を一切加えすにもう一度Submitボタンを押してみると、
+
+キャッシュレイヤーが仕事をして一切リクエストが発生しなければうまくいっている。
+
+Dev Toolsのnetworkタブから確認できる
+
+OK
+
+#### Bundling user input
+
+- (esbuildのbuild時に)エントリ・ポイントを受け取るようにする

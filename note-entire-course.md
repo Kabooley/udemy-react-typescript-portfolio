@@ -2321,3 +2321,263 @@ OK
 #### Bundling user input
 
 - (esbuildのbuild時に)エントリ・ポイントを受け取るようにする
+
+```TypeScript
+// index.jsx
+
+// 変更前
+const onClick = async () => {
+    if (!ref.current) {
+        return;
+    }
+
+    const result = await ref.current.build({
+        entryPoints: ['index.js'],
+        bundle: true,
+        write: false,
+        plugins: [unpkgPathPlugin()],
+        // define property
+        define: {
+            'process.env.NODE_ENV': '"production"',
+            // NOTE: globalはブラウザならwindow, Nodeならglobal
+            global: 'window',
+        },
+    });
+    setCode(result.outputFiles[0].text);
+};
+
+// 変更後
+
+const onClick = async () => {
+    if (!ref.current) {
+        return;
+    }
+
+    const result = await ref.current.build({
+        entryPoints: ['index.js'],
+        bundle: true,
+        write: false,
+        // NOTE: useStateしているinputを入力するようにした
+        plugins: [unpkgPathPlugin(input)],
+        // define property
+        define: {
+            'process.env.NODE_ENV': '"production"',
+            global: 'window',
+        },
+    });
+}
+
+// unpkg-path-plugins.ts
+// 
+// NOTE: 引数をとるようにした
+export const unpkgPathPlugin = (inputCode: string) => {
+  // ...
+  build.onLoad({ filter: /.*/ }, async (args: any) => {
+      console.log('onLoad', args);
+
+      if (args.path === 'index.js') {
+          return {
+              loader: 'jsx',
+              contents: inputCode,
+          };
+      }
+  // ...
+  }
+  // ...
+}
+```
+
+これでtextareaに入力された内容をわりと反映するようになった
+
+#### Breaking Up Resolve Logic with Filter
+
+一つのonResolve()のなかに条件分岐を設けるのではなくて、
+
+フィルタリングする対象ごとにonResolve()を設ける。
+
+3つに分割した
+
+```TypeScript
+
+export const unpkgPathPlugin = (inputCode: string) => {
+    return {
+        name: 'unpkg-path-plugin',
+        setup(build: esbuild.PluginBuild) {
+
+            build.onResolve({ filter: /(^index\.js$)/}, () => {
+                return { path: 'index.js', namespace: 'a'};
+            });
+
+            build.onResolve({ filter: /^\.+\//}, (args: any) => {
+                return {
+                    namespace: 'a',
+                    path: new URL(
+                        args.path,
+                        'https://unpkg.com' + args.resolveDir + '/'
+                    ).href,
+                };
+            })
+
+            build.onResolve({ filter: /.*/ }, async (args: any) => {
+                return {
+                    namespace: 'a',
+                    path: `https://unpkg.com/${args.path}`,
+                };
+            });
+            // ...
+        }
+    }
+}
+```
+
+#### Refactoring to Multiple Plugins
+
+現状のPluginファイルをさらに別のプラグインに分割する
+
+```TypeScript
+// feth-plugin.ts
+// 
+// NOTE: new file added.
+// 
+// 主にbuild.onLoad()の仕事を司る
+import * as esbuild from 'esbuild-wasm';
+import axios from 'axios';
+import localForage from 'localforage';
+
+const fileCache = localForage.createInstance({
+  name: 'filecache',
+});
+
+export const fetchPlugin = (inputCode: string) => {
+  return {
+    name: 'fetch-plugin',
+    setup(build: esbuild.PluginBuild) {
+      build.onLoad({ filter: /.*/ }, async (args: any) => {
+        if (args.path === 'index.js') {
+          return {
+            loader: 'jsx',
+            contents: inputCode,
+          };
+        }
+
+        const cachedResult = await fileCache.getItem<esbuild.OnLoadResult>(
+          args.path
+        );
+
+        if (cachedResult) {
+          return cachedResult;
+        }
+        const { data, request } = await axios.get(args.path);
+
+        const result: esbuild.OnLoadResult = {
+          loader: 'jsx',
+          contents: data,
+          resolveDir: new URL('./', request.responseURL).pathname,
+        };
+        await fileCache.setItem(args.path, result);
+
+        return result;
+      });
+    },
+  };
+};
+
+// unpkg-path-plugin.ts
+// 
+// 主にbuild.onResolve()の仕事を司ることになった
+import * as esbuild from 'esbuild-wasm';
+
+export const unpkgPathPlugin = () => {
+  return {
+    name: 'unpkg-path-plugin',
+    setup(build: esbuild.PluginBuild) {
+      // Handle root entry file of 'index.js'
+      build.onResolve({ filter: /(^index\.js$)/ }, () => {
+        return { path: 'index.js', namespace: 'a' };
+      });
+
+      // Handle relative paths in a module
+      build.onResolve({ filter: /^\.+\// }, (args: any) => {
+        return {
+          namespace: 'a',
+          path: new URL(args.path, 'https://unpkg.com' + args.resolveDir + '/')
+            .href,
+        };
+      });
+
+      // Handle main file of a module
+      build.onResolve({ filter: /.*/ }, async (args: any) => {
+        return {
+          namespace: 'a',
+          path: `https://unpkg.com/${args.path}`,
+        };
+      });
+    },
+  };
+};
+
+
+// index.jsx
+// 
+// ２つのプラグインを扱うことになった
+import * as esbuild from 'esbuild-wasm';
+import { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
+import { unpkgPathPlugin } from './plugins/unpkg-path-plugin';
+import { fetchPlugin } from './plugins/fetch-plugin';
+
+const App = () => {
+  const ref = useRef<any>();
+  const [input, setInput] = useState('');
+  const [code, setCode] = useState('');
+
+  const startService = async () => {
+    ref.current = await esbuild.startService({
+      worker: true,
+      wasmURL: '/esbuild.wasm',
+    });
+  };
+  useEffect(() => {
+    startService();
+  }, []);
+
+  const onClick = async () => {
+    if (!ref.current) {
+      return;
+    }
+
+    const result = await ref.current.build({
+      entryPoints: ['index.js'],
+      bundle: true,
+      write: false,
+      // NOTE: 複数のプラグインを使用するようになった
+      // 順番は重要
+      plugins: [unpkgPathPlugin(), fetchPlugin(input)],
+      define: {
+        'process.env.NODE_ENV': '"production"',
+        global: 'window',
+      },
+    });
+
+    // console.log(result);
+
+    setCode(result.outputFiles[0].text);
+  };
+
+  return (
+    <div>
+      <textarea
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+      ></textarea>
+      <div>
+        <button onClick={onClick}>Submit</button>
+      </div>
+      <pre>{code}</pre>
+    </div>
+  );
+};
+
+ReactDOM.render(<App />, document.querySelector('#root'));
+```
+

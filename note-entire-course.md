@@ -2581,3 +2581,132 @@ const App = () => {
 ReactDOM.render(<App />, document.querySelector('#root'));
 ```
 
+#### CSSモジュールをインポートする
+
+ユーザがテキストエリアにCSSモジュールをimportするよう書いたら...
+
+の対処実装
+
+JavaScriptのモジュールを取得するのと何が違うのか？
+
+それはJavaScriptだと思ってCSSファイルを読み込んだから文法がおかしいというエラーになるのである。
+
+なぜJavaScriptだと思った（JavaScript前提な）のか？
+
+それはpluginの`onLoadResult`で`loader`を`jsx`で指定しているからである
+
+https://esbuild.github.io/content-types/#css
+
+なのでloaderをcssで指定すればいい。
+
+問題はいま読み込んでいるファイルがjsxなのかcssなのか判断しないと同じ事になることである
+
+なのでcssファイルであるかの条件分岐を設ける
+
+```TypeScript
+// fetch-plugin.ts
+
+export const fetchPlugin = (inputCode: string) => {
+  return {
+    name: 'fetch-plugin',
+    setup(build: esbuild.PluginBuild) {
+
+        // ...
+        const { data, request } = await axios.get(args.path);
+        // 条件分岐
+        const loader: esbuild.Loader = args.path.match(/.css$/) ? 'css': 'jsx';
+
+        const result: esbuild.OnLoadResult = {
+          loader: loader,
+          contents: data,
+          resolveDir: new URL('./', request.responseURL).pathname,
+        };
+        await fileCache.setItem(args.path, result);
+
+        return result;
+      });
+    },
+  };
+};
+```
+
+でやってみると...まだエラーが出る
+
+「出力パスが指定されていない場合CSSファイルはJavaScriptファイルにimportできない」という旨のエラー
+
+https://esbuild.github.io/content-types/#css-from-js
+
+上記の項目に
+
+> また、JavaScriptからCSSをインポートすることもできます。この場合、esbuildは与えられたエントリポイントから参照されるすべてのCSSファイルを集め、そのJavaScriptエントリポイントのJavaScript出力ファイルの隣にある兄弟CSS出力ファイルにバンドルします。**つまり、esbuildがapp.jsを生成すると、app.jsが参照するすべてのCSSファイルを含むapp.cssも生成されます。**
+
+
+つまり今回使わない余計なファイルが発生してそっちにcssがまとめられるのである
+
+これだとあかんらしい。
+
+で、cssファイルを読み込むことになったら、その内容をJavaScriptが読み取って
+styleでJavaScriptコードに突っ込んでいく(build.onLoadの戻り値のcontentsに突っ込んでいく)ことにする
+
+```TypeScript
+    setup(build: esbuild.PluginBuild) {
+      build.onLoad({ filter: /.*/ }, async (args: any) => {
+
+        const { data, request } = await axios.get(args.path);
+
+        const fileType: string = args.path.match(/.css$/) ? "css" : "jsx";
+        const contents: string =
+          fileType === "css"
+            ? `
+            const style = document.createElement('style');
+            style.innerText = 'body { background-color: "red" }';
+            document.head.appendChild(style);
+        `
+            : data;
+        const result: esbuild.OnLoadResult = {
+          loader: "jsx",
+          contents: contents,
+          resolveDir: new URL("./", request.responseURL).pathname,
+        };
+        await fileCache.setItem(args.path, result);
+
+        return result;
+      });
+```
+
+つまりHTMLのheadタグ内にstyleタグを設けるというコードである。
+
+先のbuild.onLoadの中身を...
+
+```TypeScript
+const contents: string =
+    fileType === "css"
+    ? `
+    const style = document.createElement('style');
+    style.innerText = '${data}';
+    document.head.appendChild(style);
+`
+    : data;
+```
+
+としてみる。
+
+
+するとJavaScriptでは無効な文字が含まれていることによるエラーが起こる
+
+なのでエスケープする
+
+```TypeScript
+const escaped = data
+    .replace(/\n/g, '')
+    .replace(/"/g, '\\"')
+    .replace(/'/g, "\\'");
+const contents: string =
+    fileType === "css"
+    ? `
+    const style = document.createElement('style');
+    style.innerText = '${escaped}';
+    document.head.appendChild(style);
+`
+    : data;
+```

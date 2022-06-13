@@ -4,9 +4,16 @@ Note entire course
 
 ## 目次
 
-[Section-5](#Section-5)
+[Section-7](#Section-7)
+[まとめ\_section7](#まとめ_section7)
+[Section-8](#Section-8)
+[まとめ\_section8](#まとめ_section8)
+[Section-9](#Section-9)
+[まとめ\_section9](#まとめ_section9)
+[Section-10](#Section-10)
+[まとめ\_section10](#まとめ_section10)
 
-## Section-5
+## Section-7
 
 #### 3 つの大きな課題
 
@@ -259,10 +266,10 @@ eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpac
 
 Bundler がおこなっていること
 
--   エントリーファイルの内容を読み取る
--   自動的に require/import/export の記述を探し出す
--   自動的にハードドライブ上のモジュールを探し出す
--   これらのファイルをすべて一つのファイルに、全ての変数、require/import/export 関係を正確にまとめる
+- エントリーファイルの内容を読み取る
+- 自動的に require/import/export の記述を探し出す
+- 自動的にハードドライブ上のモジュールを探し出す
+- これらのファイルをすべて一つのファイルに、全ての変数、require/import/export 関係を正確にまとめる
 
 今回作成しようとしているアプリケーションは、
 
@@ -325,14 +332,14 @@ Transpiling/Bundling remotely or locally?
 
 Remote のメリット:
 
--   ダウンロードした NPM モジュールをキャッシュして、コードをより速くバンドルできます
--   動作の遅い端末や限られた帯域幅のインターネットしか使えない人にとっては有利
+- ダウンロードした NPM モジュールをキャッシュして、コードをより速くバンドルできます
+- 動作の遅い端末や限られた帯域幅のインターネットしか使えない人にとっては有利
 
 Local のメリット：
 
--   API サーバへリクエストを丸投げできるからコードの実行が早い
--   API サーバの手入れが不要である
--   講義では最終的にローカルを採用して開発していく
+- API サーバへリクエストを丸投げできるからコードの実行が早い
+- API サーバの手入れが不要である
+- 講義では最終的にローカルを採用して開発していく
 
 高速だから
 
@@ -353,10 +360,6 @@ Local のメリット：
 ESBuild はブラウザでトランスパイリングもバンドリングもできる
 
 めちゃ速いらしい
-
-#### 56: A Demo App
-
-~/jbook/
 
 #### ESBuild
 
@@ -656,7 +659,7 @@ export const unpkgPathPlugin = () => {
 
 chrome dev tools のネットワークタブを開く
 
-## まとめ section 7: Implementing In-Browser Bundling
+## まとめ\_section7
 
 簡潔にまとめると:
 
@@ -668,16 +671,22 @@ chrome dev tools のネットワークタブを開く
 
 `esbuild`の web-assembly と plugin を使って問題を解決するよ
 
+[ブラウザとファイルシステムについて](#ブラウザとファイルシステムについて)
+[`ESBuild`について](#`ESBuild`について)
+[トランスパイリングする方法](#トランスパイリングする方法)
+[バンドリング in ブラウザは困難を極める](#バンドリングinブラウザは困難を極める)
+[NPM レジストリとのやりとり](#NPMレジストリとのやりとり)
+
 #### ブラウザとファイルシステムについて
 
 **問題：ブラウザからファイルシステムにアクセスできない**
 
 バンドリングが行っていること 4 つ
 
--   エントリーファイルの内容を読み取る
--   自動的に require/import/export の記述を探し出す
--   自動的にハードドライブ上のモジュールを探し出す
--   これらのファイルをすべて一つのファイルに、全ての変数、require/import/export 関係を正確にまとめる
+- エントリーファイルの内容を読み取る
+- 自動的に require/import/export の記述を探し出す
+- 自動的にハードドライブ上のモジュールを探し出す
+- これらのファイルをすべて一つのファイルに、全ての変数、require/import/export 関係を正確にまとめる
 
 ということで、
 
@@ -715,7 +724,7 @@ import react from 'react';
 
 今回は`ESBuild`を使うことになった
 
-#### ESBuild について
+#### `ESBuild`について
 
 https://esbuild.github.io/
 
@@ -725,7 +734,7 @@ https://esbuild.github.io/
 
 特徴として
 
--   内部は Go 言語によってネイティブコードに変換されており、並列処理も得意だから超高速らしい
+- 内部は Go 言語によってネイティブコードに変換されており、並列処理も得意だから超高速らしい
 
 なので、ブラウザ内部で JavaScript コードを web-assembly に変換してブラウザ内部で実行可能なものにしてくれる
 
@@ -1025,6 +1034,8 @@ if (_root) {
 }
 ```
 
+## Section-8
+
 #### Plugin と Bundling
 
 https://esbuild.github.io/plugins/
@@ -1093,15 +1104,15 @@ export const unpkgPathPlugin = () => {
 
 ESBuild Bundling Process
 
--   index.js の場所を特定する (Build.onResove step)
+- index.js の場所を特定する (Build.onResove step)
 
--   index.js をロードしてみる（Build.onLoad step）
+- index.js をロードしてみる（Build.onLoad step）
 
--   index.js をパースして import/require/export を探す
+- index.js をパースして import/require/export を探す
 
--   探し出した import/require/export が求めているファイルを探し出す（Build.onResolve step）
+- 探し出した import/require/export が求めているファイルを探し出す（Build.onResolve step）
 
--   見つけ出したファイルをロードする（Build.onLoad step）
+- 見つけ出したファイルをロードする（Build.onLoad step）
 
 ##### onResolve callback
 
@@ -1120,13 +1131,13 @@ ESBuild Bundling Process
 
 コールバックオプション：
 
--   filter:
+- filter:
 
 > すべてのコールバックは、正規表現であるフィルターを提供する必要があります。パスがこのフィルターと一致しない場合、登録されたコールバックはスキップされます。
 
 つまりフィルタの正規表現と一致するファイルだけ相手にすると
 
--   namespace?:
+- namespace?:
 
 > これはオプションです。指定されている場合、コールバックは指定された名前空間内のモジュール内のパスでのみ実行されます
 
@@ -1138,7 +1149,7 @@ ESBuild Bundling Process
 
 コールバックが受け取る引数：
 
--   path:
+- path:
 
 > これは、モジュールの完全に解決されたパスです。名前空間が file である場合はファイルシステムのパスと考えるべきですが、 それ以外の場合はどのようなパスでもかまいません。例えば、以下のサンプルの HTTP プラグインでは、 http:// で始まるパスが特別な意味を持ちます。
 
@@ -1219,8 +1230,8 @@ module.exports = 'hi there!';
 
 実装内容：
 
--   onResolve で`unpkg.com/tiny-test-pkg`を import するときの path 解決を定義する
--   onLoad で、実際に`unpkg.com/tiny-test-pkg`アクセスするときに axios を使って fetch させる
+- onResolve で`unpkg.com/tiny-test-pkg`を import するときの path 解決を定義する
+- onLoad で、実際に`unpkg.com/tiny-test-pkg`アクセスするときに axios を使って fetch させる
 
 ```TypeScript
 import * as esbuild from 'esbuild-wasm';
@@ -1278,18 +1289,18 @@ export const unpkgPathPlugin = () => {
 
 まとめ：
 
--   プラグインは ESBuild の機能をカスタマイズしたものである
+- プラグインは ESBuild の機能をカスタマイズしたものである
 
--   プラグインは`name`と`setup`からなるオブジェクトである
+- プラグインは`name`と`setup`からなるオブジェクトである
 
 講義ではそのオブジェクトを返す関数を定義した
 
--   プラグインの setup 関数は、ビルド API コールのたびに一度だけ実行されます。
+- プラグインの setup 関数は、ビルド API コールのたびに一度だけ実行されます。
 
 つまりコマンドラインで build コマンドを打ったら、
 プラグインがあれば一度だけ実行される
 
--   プラグインは onResolve、onLoad という 2 つの関数をもつ
+- プラグインは onResolve、onLoad という 2 つの関数をもつ
 
 #### Refactor ESBuild Plugin
 
@@ -1299,8 +1310,8 @@ args.path が未知の場合に対処する
 
 今回取得したい URL:
 
--   https://unplkg.com/medium-test-pkg@1.0.0/index.js
--   https://unplkg.com/medium-test-pkg@1.0.0/medium.js
+- https://unplkg.com/medium-test-pkg@1.0.0/index.js
+- https://unplkg.com/medium-test-pkg@1.0.0/medium.js
 
 ```TypeScript
 // mediu-test-pkg/index.jsの中身
@@ -1541,16 +1552,16 @@ export const unpkgPathPlugin = () => {
 
 なぜか？
 
--   FOUND `const message = require('nested-test-pkg');`
--   onResolve `{path: 'nested-test-pkg', importer: 'index.js'}`
--   onLoad gets `{path: 'https://unplg.com/nested-test-pkg'}`
--   FOUND `./helpers/utils`
+- FOUND `const message = require('nested-test-pkg');`
+- onResolve `{path: 'nested-test-pkg', importer: 'index.js'}`
+- onLoad gets `{path: 'https://unplg.com/nested-test-pkg'}`
+- FOUND `./helpers/utils`
 
 NOTE: ここの importer が正しくない
 
--   onResolve `{path: 'helpers/utils', importer: 'https://unpkg.com/nested-tesst-pkg'}`
--   onLoad `{path: 'https://unpkg.com/nested-tesst-pkg/helpers/utils'}`
--   404 そんな URL は存在しないエラー
+- onResolve `{path: 'helpers/utils', importer: 'https://unpkg.com/nested-tesst-pkg'}`
+- onLoad `{path: 'https://unpkg.com/nested-tesst-pkg/helpers/utils'}`
+- 404 そんな URL は存在しないエラー
 
 正しくは`https://unpkg.com/nested-tesst-pkg/src/index.js`
 
@@ -1578,8 +1589,8 @@ NPM パッケージ取得アプローチの分岐：
 
 `https://unpkg.com/`
 
--   最後のファイルが見つかったディレクトリ
--   このファイルが要求文
+- 最後のファイルが見つかったディレクトリ
+- このファイルが要求文
 
 新しく実装する方法。
 
@@ -1695,7 +1706,7 @@ username: ""
 [[Prototype]]: URL
 ```
 
-## まとめ ここまでのまとめ　すっごく簡単に
+### ここまでのまとめ、すっごく簡単に
 
 web 上で動作するコードエディタを作る。
 
@@ -1703,39 +1714,39 @@ web 上でコードを書く際に、on demand で必要なモジュールをそ
 
 その時にぶち当たる問題:
 
--   1. NPM パッケージは通常ローカルファイルから探し出そうとする
+- 1. NPM パッケージは通常ローカルファイルから探し出そうとする
 
-    しかし今回作成するのは web 上で動作するコードエディタなので、
-    ブラウザかサーバ上にモジュールパッケージがないとダメで
-    ブラウザの場合、ローカルファイルにアクセスできない。
+  しかし今回作成するのは web 上で動作するコードエディタなので、
+  ブラウザかサーバ上にモジュールパッケージがないとダメで
+  ブラウザの場合、ローカルファイルにアクセスできない。
 
-    なのでユーザが入力したコードから import/require/export があったら
-    都度検査して必要なモジュールを NPM レジストリから取得するようにしないといけない
+  なのでユーザが入力したコードから import/require/export があったら
+  都度検査して必要なモジュールを NPM レジストリから取得するようにしないといけない
 
--   2. webpack は１の問題のせいでバンドリングが不可能
+- 2. webpack は１の問題のせいでバンドリングが不可能
 
-    なので ESBuild を使う。
-    ESBuild だと、開発者定義の独自 plugin を導入出来て
-    機能を拡張できる。
-    このおかげで import/require/export の問題が解決できる
+  なので ESBuild を使う。
+  ESBuild だと、開発者定義の独自 plugin を導入出来て
+  機能を拡張できる。
+  このおかげで import/require/export の問題が解決できる
 
--   3. NPM レジストリは localhost:3000 からのアクセスは拒否する
+- 3. NPM レジストリは localhost:3000 からのアクセスは拒否する
 
-    つまり直接'react'くれとは NPM にリクエストできない。
-    これを解決してくれるサービスがあって、
-    `unpkg`という仲介してくれるサービスを使う
+  つまり直接'react'くれとは NPM にリクエストできない。
+  これを解決してくれるサービスがあって、
+  `unpkg`という仲介してくれるサービスを使う
 
--   4. ESBuild のバンドリング API は「ローカルファイルシステム」を要求する
+- 4. ESBuild のバンドリング API は「ローカルファイルシステム」を要求する
 
-    つまり ESBuild をそのまま使うと、結局ローカルファイルを要求されてしまうので
-    このデフォ機能を回避して拡張機能を導入させる
-    それがプラグイン
+  つまり ESBuild をそのまま使うと、結局ローカルファイルを要求されてしまうので
+  このデフォ機能を回避して拡張機能を導入させる
+  それがプラグイン
 
-    import/require/export のコードを見つけて解決しようとするときに
-    プラグインが介入するようにさせる。
-    (プラグインは Build API の呼出のたびに実行される)
+  import/require/export のコードを見つけて解決しようとするときに
+  プラグインが介入するようにさせる。
+  (プラグインは Build API の呼出のたびに実行される)
 
--   ESBuild Plugin
+#### ESBuild_Plugin
 
 プラグインは次の通り。
 
@@ -1828,13 +1839,13 @@ namespace が指定されていれば、コールバックは指定したネー�
 
 onLoad のコールバック関数の引数:
 
--   path: モジュールの完全に解決されたパスです。名前空間が file である場合はファイルシステムのパスと考えるべきですが、 それ以外の場合はどのようなパスでもかまいません。
+- path: モジュールの完全に解決されたパスです。名前空間が file である場合はファイルシステムのパスと考えるべきですが、 それ以外の場合はどのようなパスでもかまいません。
 
--   namespace: このファイルを解決した on-resolve コールバックによって設定された、モジュールのパスがある名前空間である。
+- namespace: このファイルを解決した on-resolve コールバックによって設定された、モジュールのパスがある名前空間である。
 
 つまり build.onResolved で返されたオブジェクトの namespace はここで引き継がれる
 
-##### 具体的な解決の様子
+##### plugin具体的な解決の様子
 
 ESBuild が entory point の index.js から読み取るとする
 
@@ -1898,10 +1909,10 @@ export const unpkgPathPlugin = () => {
 
 次の通りに解決される。
 
--   ビルド開始
--   (Entry Point の)index.js を読み取る
--   プラグイン unpkg-path-plugin.ts を実行
--   onResolve()の条件分岐で次が実行される
+- ビルド開始
+- (Entry Point の)index.js を読み取る
+- プラグイン unpkg-path-plugin.ts を実行
+- onResolve()の条件分岐で次が実行される
 
 ```TypeScript
 // path === index.jsだから
@@ -1915,7 +1926,7 @@ index.js のなかの import 文の何かではなくて index.js 自身であ�
 たぶんエントリーポイントであることが関係しているのかも。
 （つまり、内部的に index.js を import していることになっているのかも）
 
--   onLoad()が実行されて
+- onLoad()が実行されて
 
 ```JavaScript
 {path: "index.js", namespace: 'a'}
@@ -1953,7 +1964,7 @@ import { unpkgPathPlugin } from "./plugins/unpkg-path-plugin";
 
 ということで次は、contents のなかで記述された、`const message = require('nested-test-pkg');`の解決に移動する。
 
--   onResolve()で args.path: 'nested-test-pkg'を解決する
+- onResolve()で args.path: 'nested-test-pkg'を解決する
 
 return `{path: 'nested-test-pkg', importer: 'index.js', namespace: 'a', resolveDir: ''}`
 
@@ -1968,7 +1979,7 @@ return {
 
 で解決される。なので...
 
--   onLoad()で`{path: "https://unpkg.com/nested-test-pkg", namespace: 'a'}`を取得する
+- onLoad()で`{path: "https://unpkg.com/nested-test-pkg", namespace: 'a'}`を取得する
 
 ```JavaScript
 const { data, request } = await axios.get(args.path);
@@ -2045,8 +2056,8 @@ if (args.path.includes("./") || args.path.includes("../")) {
 
 結論：
 
--   他のモジュールを要求してもうまくいっている
--   複数モジュールを要求してもうまくいっている
+- 他のモジュールを要求してもうまくいっている
+- 複数モジュールを要求してもうまくいっている
 
 build.onLoad()で返す contents で`react`を要求してみる
 
@@ -2169,7 +2180,90 @@ const App = () => {
 
 `import React from 'react'`とするとどのバージョンがやってくるのか
 
-## Section9: Caching For Big Performance Gains
+## まとめ\_section8
+
+title: Dynamic Fetching and Loading NPM Package
+
+動的に、ユーザが入力した import/require/export を読み取って、
+要求されたモジュールを NPM レジストリから取得するための方法を学んだので
+そのまとめ。
+
+section-7 まででは、
+
+NPM パッケージを NPM レジストリから直接取得するのは不可能で、代わりに unpkg というサービスを利用するところまで来た。
+
+そのために section-8 では ESbuild プラグインを使い倒して、
+
+unpkg を経由しながら、動的にユーザがテキストエリアに入力した JavaScript コードを読み取って
+
+`import/require/export`のモジュール要求を解決していく。
+
+#### ESBuild Plug-in の機能簡単に
+
+まず section-7 まででビルドとトランスパイルする方法を確認した。
+
+プラグインとは、
+
+> プラグイン API を使用すると、ビルドプロセスのさまざまな部分にコードを挿入できます。
+
+とあるように、
+
+プラグインは ESBuild のビルド中に実行される、（ビルドの内容を）カスタマイズ可能にするものである。
+
+- プラグインとは：
+
+オブジェクトで`name: string`と`setup: (build: esbuild.PluginBuild) => void`からなる。
+
+- プラグインが実行される場面：
+
+ビルド中のファイルから`import/require/export`のコードを見つけると、都度プラグインの各メソッドが実行される。
+
+すこし詳しく言うと、プラグインの setup 関数が、ビルド API が呼び出されるたびに
+
+つまり、そのモジュールをビルドするたびに一度実行される。
+
+- setup()メソッド内で使えるメソッド２つ
+
+メソッドには主に 2 つあって...必ず onResolve(), onLoad()の順番で定義される。
+
+1. build.onResolve()の簡単な説明
+
+> onResolve を使用して追加されたコールバックは、esbuild がビルドする各モジュールの各インポートパスで実行されます。
+
+たとえば index.js が esbuild でビルド中で、index.js 内に`import ...`というように import 文があったときに、
+PluginBuild.onResolve()のコールバック関数が実行される。
+
+このコールバック関数をカスタマイズすることで、
+
+(import が要求するモジュールの)パスをどうやって解決するかを定義できるのである。
+
+2. build.onLoad()の簡単な説明
+
+> onLoad を使用して追加されたコールバックは、外部としてマークされていない一意のパス/名前空間のペアごとに実行されます。
+
+build.onResolve()が返した path と namespace の組み合わせが被らない限り（一意になる限り）PluginBuild.onLoad()のコールバック関数が実行される。
+
+> その仕事は、モジュールの内容を返し、それを解釈する方法を esbuild に指示することです。
+
+onLoad のコールバック関数は`contents`というプロパティを定義できて、ここに import で要求したモジュールの中身を突っ込んで返せば、要求されたモジュールがビルド中のファイルに要求通り import できた事になる。
+
+両メソッドはこちらですこし詳しくまとめた。
+[ESBuild_Plugin](#ESBuild_Plugin)
+詳しい具体例もあるよ。
+[plugin具体的な解決の様子](#plugin具体的な解決の様子)
+
+
+
+要まとめ：
+
+TODO: 相対パスの解決方法の話
+TODO: URLオブジェクトの話
+TODO: ネストされたモジュールのパス解決の話
+TODO: リダイレクトの話
+
+## Section-9
+
+Caching For Big Performance Gains
 
 パフォーマンス最適化のコーナー。
 
@@ -2217,9 +2311,9 @@ Dev Tools `Application` の`Storage`セクションからストレージの様�
 
 導入してみる：
 
--   キャッシュが残っているのか確認する
--   一致するキャッシュがあればそれを返し
--   なければ新たなキャッシュを保存する
+- キャッシュが残っているのか確認する
+- 一致するキャッシュがあればそれを返し
+- なければ新たなキャッシュを保存する
 
 ```TypeScript
 
@@ -2310,7 +2404,7 @@ OK
 
 #### Bundling user input
 
--   (esbuild の build 時に)エントリ・ポイントを受け取るようにする
+- (esbuild の build 時に)エントリ・ポイントを受け取るようにする
 
 ```TypeScript
 // index.jsx
@@ -2699,7 +2793,7 @@ const contents: string =
     : data;
 ```
 
-#### リファクタリング: Extracting chaching logic 
+#### リファクタリング: Extracting chaching logic
 
 onload メソッドは return null すると、それ以降の onload メソッドを走らせない。
 
@@ -2858,13 +2952,14 @@ export const fetchPlugin = (inputCode: string) => {
 };
 
 ```
+
 #### Better way to load WASM
 
-現状だと、予め`esbuild-wasm`のパッケージ`esbuild.wasm`がpublicに存在しないと動かすことができない。
+現状だと、予め`esbuild-wasm`のパッケージ`esbuild.wasm`が public に存在しないと動かすことができない。
 
 これは面倒なので、実行時に自動的にダウンロードするようにする。
 
-これまたunpkgを使う。
+これまた unpkg を使う。
 
 ```TypeScript
 // index.jsx
@@ -2884,27 +2979,27 @@ const App = () => {
     };
 ```
 
+#### まとめ section 10
+
 ## section11: Displaying a Code Editor In a React App
 
-文字列内のJavaScriptコードを実行する方法
+文字列内の JavaScript コードを実行する方法
 
 1. eval()
 
 悪意のあるコードに対して無力。公式に危険な関数。
 
-なのでtry...catchをeval()につける
+なので try...catch を eval()につける
 
-これはsetTimeout()を書かれたら対処できない
+これは setTimeout()を書かれたら対処できない
 
 #### Considerations around code execution
-
 
 考えるべきこと：
 
 - ユーザが入力したコードはエラーをスローしたりプログラムをクラッシュさせたりする可能性がある
-- ユーザが入力したコードはDOMをいじってプログラムをクラッシュさせる可能性がある
+- ユーザが入力したコードは DOM をいじってプログラムをクラッシュさせる可能性がある
 
   `document.body.innerHTML = "";`を実行されたら大変なことに
 
 - 悪意のある第三者がユーザのコードに悪意のあるコードを追加する可能性がある
-

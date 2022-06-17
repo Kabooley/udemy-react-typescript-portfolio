@@ -178,11 +178,122 @@ build.onResolve({ filter: /.*/ }, async (args: any) => {
 });
 ```
 
-つまり、require()で'./utils'を要求しているから
-args.path には"./utils"がわたされるわけで
-そのままつかうと先の URL になってしまう
+つまり、
 
-なので条件分岐を設ければいい。
+`https://unpkg.com/medium-test-pkg/index.js`のファイル内に
+
+`require('./utils')`とあったから、build.onResolve()でうけとったargs.pathが
+
+`./utils`になったので
+
+相対パスを示す`./`または`../`がpathに含まれていたら条件分岐すればいい
+
+```TypeScript
+export const unpkgPathPlugin = () => {
+  return {
+    name: 'unpkg-path-plugin',
+    setup(build: esbuild.PluginBuild) {
+      build.onResolve({ filter: /.*/ }, async (args: any) => {
+        console.log('onResolve', args);
+        if (args.path === 'index.js') {
+          return { path: args.path, namespace: 'a' };
+        }
+
+        // NOTE: 相対パス解決
+        if (args.path.includes('./') || args.path.includes('../')) {
+          return {
+            namespace: 'a',
+            path: new URL(args.path, args.importer + '/').href,
+          };
+        }
+          // ...
+      }
+      // ...
+    }
+    // ...
+  }
+  // ...
+}
+```
+args.importer: `https://unpkg.com/medium-test-pkg`
+args.path: `./utils`
+
+これでnew URL()すると望み通りのURLが得られる。
+
+NOTE: baseURLの末尾に`/`をつけないと欲しいURLにならないので注意
+
+#### URLオブジェクト
+
+https://developer.mozilla.org/ja/docs/Web/API/URL
+
+URLコンストラクタを使うと
+
+渡されたパスが相対パスの時には、
+
+第二引数としてbaseURLを必須とする。
+
+一方、絶対パスの時は渡されたbaseURLは無視される。
+
+これを使えば、
+
+pluginはargs.importerとして呼び出し元を参照するので
+
+それをbaseURLとして、
+
+args.pathはimporterが要求している相対パスとして取得できるから
+
+出来上がったURLおぶじぇくとのhrefが解決された全体URLとして取得できる
+
+そういう寸法
+
+#### ネストされたパスの解決
+
+今回は`nested-test-package`というパッケージを要求する。
+
+パッケージのindex.jsは下層のディレクトリのファイルを要求する。
+
+こんな感じ。
+
+```bash
+# nested-test-pkg
+.
+｜-- nested-test-pkg/
+        |
+        |-- src/
+              |
+              |-- helpers/
+                    |
+                    |-- utils.js
+```
+
+今のところネストされたファイルは解決できない。
+
+理由は**リダイレクトに対応できていない**からである。
+
+現状のままパス解決すると次の通りになる。
+
+```bash
+# ユーザがtextareaに次を要求したとして `const message = require('nested-test-pkg');`
+onResolve `{path: 'nested-test-pkg', importer: 'index.js'}`
+onLoad `{path: 'https://unplg.com/nested-test-pkg'}`
+onResolve `{path: 'helpers/utils', importer: 'https://unpkg.com/nested-tesst-pkg'}`
+onLoad `{path: 'https://unpkg.com/nested-tesst-pkg/helpers/utils'}`
+404 そんな URL は存在しないエラー
+```
+
+要は、
+
+次のURLを要求したら
+
+`https://unpkg.com/nested-tesst-pkg/`
+
+本来ならば次のURLにリダイレクトされる。
+
+`https://unpkg.com/nested-tesst-pkg/src/index.js`
+
+しかし現状、onLoadの解決で
+
+
 
 #### ESBuild_Plugin
 

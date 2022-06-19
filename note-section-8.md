@@ -7,14 +7,11 @@
 TODO: 相対パスの解決方法の話
 TODO: URL オブジェクトの話
 TODO: ネストされたモジュールのパス解決の話
-TODO: リダイレクトの話
 
 [相対パスの解決](#相対パスの解決)
 [URL オブジェクト](#URLオブジェクト)
 [ネストされたパスの解決](#ネストされたパスの解決)
-[リダイレクト](#リダイレクト)
-[](#)
-[](#)
+[process.env.NODE_ENV](#process.env.NODE_ENV)
 
 ## まとめ\_section8
 
@@ -46,11 +43,11 @@ unpkg を経由しながら、動的にユーザがテキストエリアに入�
 
 プラグインは ESBuild のビルド中に実行される、（ビルドの内容を）カスタマイズ可能にするものである。
 
--   プラグインとは：
+- プラグインとは：
 
 オブジェクトで`name: string`と`setup: (build: esbuild.PluginBuild) => void`からなる。
 
--   プラグインが実行される場面：
+- プラグインが実行される場面：
 
 ビルド中のファイルから`import/require/export`のコードを見つけると、都度プラグインの各メソッドが実行される。
 
@@ -58,7 +55,7 @@ unpkg を経由しながら、動的にユーザがテキストエリアに入�
 
 つまり、そのモジュールをビルドするたびに一度実行される。
 
--   setup()メソッド内で使えるメソッド２つ
+- setup()メソッド内で使えるメソッド２つ
 
 メソッドには主に 2 つあって...必ず onResolve(), onLoad()の順番で定義される。
 
@@ -182,11 +179,11 @@ build.onResolve({ filter: /.*/ }, async (args: any) => {
 
 `https://unpkg.com/medium-test-pkg/index.js`のファイル内に
 
-`require('./utils')`とあったから、build.onResolve()でうけとったargs.pathが
+`require('./utils')`とあったから、build.onResolve()でうけとった args.path が
 
 `./utils`になったので
 
-相対パスを示す`./`または`../`がpathに含まれていたら条件分岐すればいい
+相対パスを示す`./`または`../`が path に含まれていたら条件分岐すればいい
 
 ```TypeScript
 export const unpkgPathPlugin = () => {
@@ -215,34 +212,35 @@ export const unpkgPathPlugin = () => {
   // ...
 }
 ```
+
 args.importer: `https://unpkg.com/medium-test-pkg`
 args.path: `./utils`
 
-これでnew URL()すると望み通りのURLが得られる。
+これで new URL()すると望み通りの URL が得られる。
 
-NOTE: baseURLの末尾に`/`をつけないと欲しいURLにならないので注意
+NOTE: baseURL の末尾に`/`をつけないと欲しい URL にならないので注意
 
-#### URLオブジェクト
+#### URL オブジェクト
 
 https://developer.mozilla.org/ja/docs/Web/API/URL
 
-URLコンストラクタを使うと
+URL コンストラクタを使うと
 
 渡されたパスが相対パスの時には、
 
-第二引数としてbaseURLを必須とする。
+第二引数として baseURL を必須とする。
 
-一方、絶対パスの時は渡されたbaseURLは無視される。
+一方、絶対パスの時は渡された baseURL は無視される。
 
 これを使えば、
 
-pluginはargs.importerとして呼び出し元を参照するので
+plugin は args.importer として呼び出し元を参照するので
 
-それをbaseURLとして、
+それを baseURL として、
 
-args.pathはimporterが要求している相対パスとして取得できるから
+args.path は importer が要求している相対パスとして取得できるから
 
-出来上がったURLおぶじぇくとのhrefが解決された全体URLとして取得できる
+出来上がった URL おぶじぇくとの href が解決された全体 URL として取得できる
 
 そういう寸法
 
@@ -250,7 +248,7 @@ args.pathはimporterが要求している相対パスとして取得できるか
 
 今回は`nested-test-package`というパッケージを要求する。
 
-パッケージのindex.jsは下層のディレクトリのファイルを要求する。
+パッケージの index.js は下層のディレクトリのファイルを要求する。
 
 こんな感じ。
 
@@ -283,17 +281,204 @@ onLoad `{path: 'https://unpkg.com/nested-tesst-pkg/helpers/utils'}`
 
 要は、
 
-次のURLを要求したら
+次の URL を要求したら
 
 `https://unpkg.com/nested-tesst-pkg/`
 
-本来ならば次のURLにリダイレクトされる。
+本来ならば次の URL にリダイレクトされる。
 
 `https://unpkg.com/nested-tesst-pkg/src/index.js`
 
-しかし現状、onLoadの解決で
+なので
+
+- リダイレクトされるかどうか確認する
+- `resolveDir`にリダイレクトの URL を登録する
+
+```TypeScript
+// Before
+export const unpkgPathPlugin = () => {
+  return {
+    name: 'unpkg-path-plugin',
+    setup(build: esbuild.PluginBuild) {
+      build.onResolve({ filter: /.*/ }, async (args: any) => {
+        //...
+        if (args.path.includes('./') || args.path.includes('../')) {
+          return {
+            namespace: 'a',
+            path: new URL(args.path, args.importer + '/').href,
+          };
+        }
+        //...
+      });
+
+      build.onLoad({ filter: /.*/ }, async (args: any) => {
+        //...
+        const { data } = await axios.get(args.path);
+        return {
+          loader: 'jsx',
+          contents: data,
+        };
+      });
+    },
+  };
+};
 
 
+// After
+export const unpkgPathPlugin = () => {
+  return {
+    name: 'unpkg-path-plugin',
+    setup(build: esbuild.PluginBuild) {
+      build.onResolve({ filter: /.*/ }, async (args: any) => {
+        // ...
+
+        if (args.path.includes('./') || args.path.includes('../')) {
+          return {
+            namespace: 'a',
+            path: new URL(
+              args.path,
+            //   NOTE: importerからresolveDirに変更した
+            // onLoadでの変更をしておけばresolveDIrはimporterの完全な代わりになる
+              'https://unpkg.com' + args.resolveDir + '/'
+            ).href,
+          };
+        }
+        //...
+      });
+
+      build.onLoad({ filter: /.*/ }, async (args: any) => {
+        // ...
+        // NOTE: requestオブジェクトを取得して
+        const { data, request } = await axios.get(args.path);
+        return {
+          loader: 'jsx',
+          contents: data,
+        //   そのなかにあるリダイレクトURLをresolveDirとして登録する
+          resolveDir: new URL('./', request.responseURL).pathname,
+        };
+      });
+    },
+  };
+};
+
+```
+
+参考：
+
+https://esbuild.github.io/plugins/#on-load-results
+
+resolveDir:
+
+> このモジュールのインポートパスをファイルシステム上の実際のパスに解決するときに使用するファイルシステムのディレクトリです。ファイル名前空間内のモジュールの場合、この値のデフォルトはモジュールパスのディレクトリ部分です。それ以外の場合は、プラグインが提供しない限り、この値はデフォルトで空です。プラグインが提供しない場合、esbuild のデフォルトの動作は、このモジュールの import を解決しません。このディレクトリは、このモジュールの未解決のインポートパスの上で実行されるすべての on-resolve コールバックに渡されます。
+
+どいういことかというと
+
+onLoad のコールバックの戻り値が resolveDir を特に指定していなかったらデフォルトで空である
+(もしも resolveDir を指定したら)このモジュールの未解決のインポートパスの上で実行されるすべての on-resolve コールバックに(resolveDir として)渡される
+
+とにかく onLoad が resolveDir を登録して返すと、未解決の import パス上で実行されるすべての onResolve コールバックが、その resolveDir を取得することになる。
+
+今回の例でいえば、
+
+onLoad: `request.responseURL`にはリダイレクトされる URL が入っている(`https://unpkg.com/nested-test-pkg@1.0.0/src/index.js`)
+
+onLoad で`new URL('./', request.responseURL).pathname`つまり`"https://unpkg.com/nested-test-pkg@1.0.0/src/"`を resolveDir として登録するので
+
+それ以降の onResolve で`resolveDir: 'https://unpkg.com/nested-test-pkg@1.0.0/src/'`として取得できるようになる
+
+request.responseURL には常に本来の URL が返されるので
+
+resolveDir としてその URL を登録して
+
+onResolve のコールバックで参照できるようにすれば
+
+リダイレクトが発生する場合にもしない場合にも対応できる。
+
+#### process.env.NODE_ENV
+
+```bash
+ > a:https://unpkg.com/react:
+   warning: Define "process.env.NODE_ENV" when bundling for the browser
+
+```
+
+これを解決する。
+
+ESBuild Build API を使う。
+
+https://esbuild.github.io/api/#define
+
+> これはグローバル識別子を定数に置き換える機能を提供する。
+> ビルド時のあるコードの挙動を、そのコードを変更することなく変更することができる
+
+公式の例：
+
+```JavaScript
+let js = 'hooks = DEBUG && require("hooks")';
+
+require('esbuild').transformSync(js, {
+  define: { DEBUG: 'true' },
+});
+
+// {
+//   code: 'hooks = require("hooks");\n',
+//   map: '',
+//   warnings: []
+// }
+
+require('esbuild').transformSync(js, {
+  define: { DEBUG: 'false' },
+})
+
+// {
+//   code: 'hooks = false;\n',
+//   map: '',
+//   warnings: []
+// }
+```
+
+js の中身が置換されるのだと思う。
+
+実際に使ってみる
+
+```TypeScript
+// index.ts
+const App = () => {
+
+    // ...
+
+    const onClick = async () => {
+        if (!ref.current) {
+            return;
+        }
+
+        const result = await ref.current.build({
+            entryPoints: ['index.js'],
+            bundle: true,
+            write: false,
+            plugins: [unpkgPathPlugin()],
+            // NOTE: 今回追加したプロパティ
+            // define property
+            define: {
+                'process.env.NODE_ENV': '"production"',
+                // NOTE: globalはブラウザならwindow, Nodeならglobal
+                global: 'window',
+            },
+        });
+
+        console.log(result);
+
+        setCode(result.outputFiles[0].text);
+    };
+
+    return (
+      // ...
+    );
+};
+
+```
+
+これで再度`react`を要求してみると先の警告が消えた
 
 #### ESBuild_Plugin
 
@@ -388,9 +573,9 @@ namespace が指定されていれば、コールバックは指定したネー�
 
 onLoad のコールバック関数の引数:
 
--   path: モジュールの完全に解決されたパスです。名前空間が file である場合はファイルシステムのパスと考えるべきですが、 それ以外の場合はどのようなパスでもかまいません。
+- path: モジュールの完全に解決されたパスです。名前空間が file である場合はファイルシステムのパスと考えるべきですが、 それ以外の場合はどのようなパスでもかまいません。
 
--   namespace: このファイルを解決した on-resolve コールバックによって設定された、モジュールのパスがある名前空間である。
+- namespace: このファイルを解決した on-resolve コールバックによって設定された、モジュールのパスがある名前空間である。
 
 つまり build.onResolved で返されたオブジェクトの namespace はここで引き継がれる
 
@@ -458,10 +643,10 @@ export const unpkgPathPlugin = () => {
 
 次の通りに解決される。
 
--   ビルド開始
--   (Entry Point の)index.js を読み取る
--   プラグイン unpkg-path-plugin.ts を実行
--   onResolve()の条件分岐で次が実行される
+- ビルド開始
+- (Entry Point の)index.js を読み取る
+- プラグイン unpkg-path-plugin.ts を実行
+- onResolve()の条件分岐で次が実行される
 
 ```TypeScript
 // path === index.jsだから
@@ -475,7 +660,7 @@ index.js のなかの import 文の何かではなくて index.js 自身であ�
 たぶんエントリーポイントであることが関係しているのかも。
 （つまり、内部的に index.js を import していることになっているのかも）
 
--   onLoad()が実行されて
+- onLoad()が実行されて
 
 ```JavaScript
 {path: "index.js", namespace: 'a'}
@@ -513,7 +698,7 @@ import { unpkgPathPlugin } from "./plugins/unpkg-path-plugin";
 
 ということで次は、contents のなかで記述された、`const message = require('nested-test-pkg');`の解決に移動する。
 
--   onResolve()で args.path: 'nested-test-pkg'を解決する
+- onResolve()で args.path: 'nested-test-pkg'を解決する
 
 return `{path: 'nested-test-pkg', importer: 'index.js', namespace: 'a', resolveDir: ''}`
 
@@ -528,7 +713,7 @@ return {
 
 で解決される。なので...
 
--   onLoad()で`{path: "https://unpkg.com/nested-test-pkg", namespace: 'a'}`を取得する
+- onLoad()で`{path: "https://unpkg.com/nested-test-pkg", namespace: 'a'}`を取得する
 
 ```JavaScript
 const { data, request } = await axios.get(args.path);

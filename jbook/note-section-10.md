@@ -25,15 +25,15 @@
 
 #### How do others solve these problems
 
-codesandboxもcodepenも、コード記述エリアは`iframe`を利用している
+codesandbox も codepen も、コード記述エリアは`iframe`を利用している
 
 #### Displaying iframe
 
-iframeの表示方法
+iframe の表示方法
 
-1. publicディレクトリにtest.htmlを用意する。
+1. public ディレクトリに test.html を用意する。
 
-2. localhost:3000/index.jsのHTMLにiframeでtest.htmlを埋め込む
+2. localhost:3000/index.js の HTML に iframe で test.html を埋め込む
 
 ```TypeScript
 // index.jsx
@@ -62,7 +62,7 @@ const App = () => {
 
 #### Different execute context
 
-iframeは、埋め込まれたwebページ(親フレーム)とは異なる実行コンテキスト(子フレーム)を生成することになる
+iframe は、埋め込まれた web ページ(親フレーム)とは異なる実行コンテキスト(子フレーム)を生成することになる
 
 では親フレームと子フレームは通信できないのか？
 
@@ -72,23 +72,23 @@ iframeは、埋め込まれたwebページ(親フレーム)とは異なる実行
 
 https://developer.mozilla.org/ja/docs/Web/HTML/Element/iframe
 
-> それぞれの閲覧コンテキストは、セッション履歴とdocumentを持ちます。他の閲覧コンテキストを埋め込んでいる閲覧コンテキストは、親閲覧コンテキストと呼ばれます。最上位の閲覧コンテキストは (親を持たないもの) は、通常はブラウザーのウィンドウで、 Window オブジェクトで表されます。
+> それぞれの閲覧コンテキストは、セッション履歴と document を持ちます。他の閲覧コンテキストを埋め込んでいる閲覧コンテキストは、親閲覧コンテキストと呼ばれます。最上位の閲覧コンテキストは (親を持たないもの) は、通常はブラウザーのウィンドウで、 Window オブジェクトで表されます。
 
 https://developer.mozilla.org/ja/docs/Web/API/Window/parent
 
 > 現在のウィンドウまたはサブフレームの親ウィンドウへの参照を返します
-> ウィンドウが親を持たない場合、parentプロパティはそれ自身への参照となる
+> ウィンドウが親を持たない場合、parent プロパティはそれ自身への参照となる
 > ウィンドウが <iframe> 、<object> 、あるいは、<frame> で読み込まれた場合、その親ウィンドウは、ウィンドウを埋め込んだ要素が存在するウィンドウとなります。
 
 ```bash
 # In Dev Tools console
-# 
+#
 # コンテキスト最上位
 $ window.a = "this is a";
 $ a
 > "this is a"
 # コンテキストを子フレームにした
-# 
+#
 # windowにはアクセスできる...
 $ window
 > window {}
@@ -96,14 +96,14 @@ $ window
 $ window.a
 > undefined
 # つまり、子フレームは親フレームのwindowにあくせすできない
-# 
+#
 # 逆に子フレームのwindowで定義したプロパティは
 $ window.b = "this is b"
 # コンテキストを上位フレームにして...
 $ window.b
 > undefined
 # アクセスできない
-# 
+#
 # つまり、フレームごとにwindowがあることがわかる
 # ----
 # 子フレームから親フレームにアクセスする方法はwindow.parentを使う
@@ -111,7 +111,7 @@ $ window.b
 $ parent.a
 > "this is a"
 # アクセスできた
-# 
+#
 # 逆に、親フレームから子フレームへアクセスする方法は,
 # 親コンテキスト
 $ document.querySelector('iframe');
@@ -125,32 +125,32 @@ $ document.querySelector('iframe').contentWindow.b
 
 ```
 
-ただしデフォルトのiframeの設定でフレーム間通信を許可しているから可能なのである
+ただしデフォルトの iframe の設定でフレーム間通信を許可しているから可能なのである
 
 #### 103 Sandboxing an iframe
 
-iframe間通信の禁止について
+iframe 間通信の禁止について
 
-通信が可能な条件2つ：どちらも真であるときに通信ができる
+通信が可能な条件 2 つ：どちらも真であるときに通信ができる
 
-1. iframe要素が`sandbox`プロパティを持たない,または `sandbox="allowed-same-origin"`プロパティを持つ
+1. iframe 要素が`sandbox`プロパティを持たない,または `sandbox="allowed-same-origin"`プロパティを持つ
 
 ```HTML
 <!-- sandbox属性を追加した -->
 <iframe sandbox="" src="/test.html" />
 ```
-この場合、parentを介してアクセスしようとしても`DOMException`エラーが出る
+
+この場合、parent を介してアクセスしようとしても`DOMException`エラーが出る
 
 ```HTML
 <!-- sandbox属性を追加した -->
 <iframe sandbox="allowed-same-origin" src="/test.html" />
 ```
 
+2. 親ドキュメントと iFrame HTML ドキュメントをまったく同じドメイン、ポート、プロトコルから取得する場合にのみ、フレーム間の直接アクセスを実現することができる
 
-2. 親ドキュメントとiFrame HTMLドキュメントをまったく同じドメイン、ポート、プロトコルから取得する場合にのみ、フレーム間の直接アクセスを実現することができる
-
-iframeを含むページをdev toolsのネットワークタブで見てみると
-iframeであるhtmlファイルは、親ファイルと同じドメイン、ポート、プロトコルから取得されているのがわかる
+iframe を含むページを dev tools のネットワークタブで見てみると
+iframe である html ファイルは、親ファイルと同じドメイン、ポート、プロトコルから取得されているのがわかる
 
 `https://localhost:3000`
 
@@ -158,84 +158,223 @@ iframeであるhtmlファイルは、親ファイルと同じドメイン、ポ�
 
 この場合、直接アクセスできる
 
-でもたとえばiframeのほうが
+でもたとえば iframe のほうが
 
 `https://nothing.localhost:3000/test.html`
 
 というように親と異なるドメインを含んだりするとアクセスできない
 
-codesandboxでもcodepenでもそれが確認できる
+codesandbox でも codepen でもそれが確認できる
 
 #### 104 how to fix iframe?
 
-先に挙げた、考慮すべきこと3点について:
+先に挙げた、考慮すべきこと 3 点について:
 
 - ユーザが入力したコードはエラーをスローしたりプログラムをクラッシュさせたりする可能性がある
 
-    解決済。iframeで区別した埋め込んだHTMLのなかでなら大丈夫
+  解決済。iframe で区別した埋め込んだ HTML のなかでなら大丈夫
 
 - ユーザが入力したコードは DOM をいじってプログラムをクラッシュさせる可能性がある
 
-    解決済。iframeで区別した埋め込んだHTMLのなかでなら大丈夫
+  解決済。iframe で区別した埋め込んだ HTML のなかでなら大丈夫
 
 - 悪意のある第三者がユーザのコードに悪意のあるコードを追加する可能性がある
 
-    解決済。iframe間の直接アクセスを禁止すればだけど。
+  解決済。iframe 間の直接アクセスを禁止すればだけど。
 
 それでは次からは、
 
-直接アクセスできなくなったiframeへ親コンテキストでユーザが入力した内容をどうやって反映させるのかを考える
-
+直接アクセスできなくなった iframe へ親コンテキストでユーザが入力した内容をどうやって反映させるのかを考える
 
 #### 105 The Full Flow - How codepent and codesandbox work
 
-
-Codepenの仕組み：
+Codepen の仕組み：
 
 API@codepen.io
+
 - フロントエンド：ユーザがコードを変更する
 - API@codepen.io:コードをトランスパイルして
 - API@codepen.io: フロントエンドへトランスパイル結果を返す
-- フロントエンド：iframeがリロードされる
-- フロントエンド：リロードされるのでHTMLとJSファイルが要求される
-    このときiframeは異なるドメインへHTMLとJSを要求する
-- API@cdpn.ioがHTMLとJSを返す
+- フロントエンド：iframe がリロードされる
+- フロントエンド：リロードされるので HTML と JS ファイルが要求される
+  このとき iframe は異なるドメインへ HTML と JS を要求する
+- API@cdpn.ioが HTML と JS を返す
 
-以上の流れならば、フロントエンドとiframeの間で通信をしないので悪意のあるコードは排除できる
+以上の流れならば、フロントエンドと iframe の間で通信をしないので悪意のあるコードは排除できる
 
-codesandboxも同様であるらしい
+codesandbox も同様であるらしい
 
 #### 106 Do we need seperation?
 
 何の分離なのかというと、
 
-フロントエンドが通信するドメインと、iframeが通信するドメインと分離する必要があるかという話
+フロントエンドが通信するドメインと、iframe が通信するドメインと分離する必要があるかという話
 
 結論は、分離しない。
 
 講義の後のほうでセキュリティについて検討することにするそうです
 
-しばらくは、locahostドメインで実行する限りは
+しばらくは、locahost ドメインで実行する限りは
 
-codepenのような誰かのコードを盗んで実行するとかを防ぐようなセキュリティは必要ないので
+codepen のような誰かのコードを盗んで実行するとかを防ぐようなセキュリティは必要ないので
 
 そのようにするとのこと
 
-講義の後半のほうではlocalhost:4005とlocalhost:4006みたいにドメインを分離するよ
-#### 106 Middle Ground Approach
+講義の後半のほうでは localhost:4005 と localhost:4006 みたいにドメインを分離するよ
 
-TODO: --- この回を理解するまで見直しましょう ----
+#### 107 Middle ground approach
 
-    この時点でのアプリケーションのコンテキスト分離の方法にともなうトレードオフが検討されているので
-    何を吟味して今後のアプリケーションで何を実装していくのか理解すること
------------------------------------------------
+議論：我々が作成するアプリケーションはセキュリティのために別サーバを立てるべきか？
 
-重要なポイント:
+という話。
 
-- （作成中のアプリケーションでは）ユーザコードはブラウザ内でバンドルしているからサーバにアップロードしていないよ
-- （localhost:4005, 4006など）異なるポートを使用することのポイントは、iFrame内のコンテンツが親フレームまたは親ドキュメント内のコンテンツに直接アクセスできないようにすることです。
+ここ数回の講義では、
 
-この後の講義では、
+サーバを分離しないと同一オリジン問題が発生してセキュリティ上の危険があることを学習した。
 
-サーバを分離しなくても、iframeと親コンテキストを分離する方法を模索する予定
+つまり、同じドメイン・ポート・プロトコルから HTML を取得する場合
 
+悪意のあるユーザによって iframe で入力したコードが親ドきゅめんとを攻撃する手段を与えてしまうのである。
+
+なのでサーバは分離したほうがいいね。そんな話をした。
+
+しかし我々が作成するアプリケーションはわざわざ別サーバを作成しないといけないのか？
+
+その答えは我々が作成しているアプリケーションが実はサーバにアクセスして HTML を得ているのではなくて
+
+実際はブラウザ内でコードを生成している点にある。
+
+つまり localhost:3000 を使っているけど、セキュリティ上の問題を回避するために localhost:4000 とかを用意しなくてはならないのか？
+
+という点を検討しなくてはならない。
+
+で、講師はその面倒を回避することにした。
+
+理由は、
+
+iframe 内のコンテンツと親ドキュメントを分離するほかの方法があるからである。
+
+ポイントは`sandbox`プロパティ
+
+最終的には別サーバを立てるように作ることになるけど
+
+しばらくは別サーバを立てない方法でアプローチする。
+
+#### 108 iFrame with srcDoc
+
+iframe 側でコンテンツを生成する!!
+
+先までの話は親ドキュメントが取得した内容をサーバを通じて iframe が取得するという方法だった。
+
+今回は srcDoc プロパティを使って iframe 側でコンテンツを生成する
+
+具体的な方法：
+
+コードを渡す方法：親ドキュメントで入力されたコードは iframe の srcDoc プロパティに渡す
+親ドキュメントにアクセスさせない方法：sandbox プロパティは空文字を渡す
+
+```TypeScript
+// index.jsx
+  return (
+    <div>
+      <textarea
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+      ></textarea>
+      <div>
+        <button onClick={onClick}>Submit</button>
+      </div>
+      <pre>{code}</pre>
+      <iframe srcDoc={html} />
+    </div>
+  );
+
+
+const html = `
+<h1> Local HTML Doc</h1>
+`;
+```
+
+これで iframe に HTML を渡すことができた
+
+しかしまだ親ドキュメントにアクセスできてしまう
+
+```HTML
+
+<iframe sandbox="" srcDoc={html} />
+```
+
+これで両方実現できた
+
+この方法のデメリットは、local ストレージにアクセスできないことである
+
+つまりユーザは localstorageAPI を使うことはできない
+
+#### 109 Execution using srcDoc
+
+srcDocs に HTML を渡す方法はわかった。
+
+srcDocs に JavaScript を渡して実行させるには？
+
+1. 実行したい JavaScript コードをはらんだ script 要素を渡す
+2. sandbox="allow-scritps"属性を iframe に渡しておく
+
+```TypeScript
+// index.jsx
+  return (
+    <div>
+      <textarea
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+      ></textarea>
+      <div>
+        <button onClick={onClick}>Submit</button>
+      </div>
+      <pre>{code}</pre>
+      <iframe srcDoc={html} sandbox="allow-scritps"/>
+    </div>
+  );
+
+
+const html = `
+    <script>${code}</script>
+`;
+```
+
+#### 110 Execution of unescaped code
+
+バンドルされたコードを親コンテキストで出力する分には問題なかったのに
+
+srcDoc へ渡すと、そのモジュールが長すぎる場合とか
+
+「そんな文字は知らん」というエラーが出る場合がある
+
+たとえば react-dom を import しようとしてそのバンドルされたコードを srcDoc へ渡したとする
+
+すると、
+
+モジュールは内部的に</script>を出力しており
+
+パーサが JavaScript がここで終了したと判断して終了した
+
+つまり次のようにコードが生成されたことになる
+
+```JavaScript
+const html = `
+    <script>
+        <script></script>
+    </script>
+`
+```
+
+なのでモジュール内の</script>以降が余計な文字として認識されてしまうのである
+
+これは textarea へ次のように入力しても確認できる
+
+```JavaScript
+console.log("<script></script>");
+```
+
+これが srcDoc へわたると</script>で終了したとなるから
+
+`console.log(`ってなに？となる

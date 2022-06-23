@@ -378,3 +378,77 @@ console.log("<script></script>");
 これが srcDoc へわたると</script>で終了したとなるから
 
 `console.log(`ってなに？となる
+
+ということでこれを回避する必要があるけど...
+
+なぜか講義は解決策を示さず次に行ってしまった。
+
+#### 111 Communication between frames
+
+子コンテキストから親コンテキストへまたはその逆の通信を実行する
+
+parent.postMessageならフレーム間の直接アクセスを無効にしても通信できる
+
+https://developer.mozilla.org/ja/docs/Web/API/Window/postMessage
+
+> 正しく使用した window.postMessage はこの制限(同一オリジンポリシー)を安全に回避するための制御された仕組みを提供します。
+
+> 大まかには、ウィンドウが他のウィンドウへの参照を取得できる場合 ( targetWindow = window.opener など)、targetWindow.postMessage() を使って MessageEvent をそのウィンドウ上で配信することができます。受け取ったウィンドウでは必要に応じて自由にイベントを処理することができます。window.postMessage() に渡された引数 ("message") はイベントオブジェクトを通して対象のウィンドウに公開されます。
+
+ということで、
+
+window.postMessage()はどういうわけか同一オリジンポリシーを回避して別スクリプトと通信できる
+
+targetWindow.postMessage()を使ってメッセージを送信して、受信側のtargetWindowはイベントリスナでそれを受信できる
+
+Syntax:
+
+```TypeScript
+/***
+ * @param {string} message - 送信するメッセージ
+ * @param {string} targetOrigin - イベントを送信するウィンドウのオリジンを指定する。`*`かURIで指定する。先までの説明でいうところのtargetWindowである。
+ * 
+ * */ 
+window.postMessage(message, targetOrigin);
+```
+
+targetOriginの注意：
+
+> **他のウィンドウの文書がどこにあるものか知っている場合は、 * ではなく、常に特定の targetOrigin を指定してください。特定のターゲットを指定しないと、悪意のあるサイトに送信したデータが開示されてしまいます。**
+
+
+受信側：
+
+```TypeScript
+window.addEventListener("message", (event) => {
+  if (event.origin !== "http://example.org:8080")
+    return;
+
+  // ...
+}, false);
+
+```
+`message`イベントが持つもの
+
+- data: 送信されたメッセージを保持しているオブジェクト
+- origin: 送信元のオリジン
+- source: メッセージを送信したwindowオブジェクトへの参照
+
+オリジンについて：
+
+> ウェブコンテンツにアクセスするために使われる URL のスキーム (プロトコル)、 ホスト (ドメイン)、 ポート によって定義されます。
+
+セキュリティ：
+
+当然windowオリジン間で通信できる方法なので、注意事項がたくさん。
+
+
+ここまでのはなし：
+
+- srcDoc属性を使えば、親コンテキストから子コンテキストへsandboxで同一おいリジンポリシーを守ったままコードを渡すことができる
+
+- window.postMessage()を使えば、子コンテキストから親コンテキストへmessageにコードを含めたりしてメッセージを送信できる
+
+#### 112 Send code to iFrame
+
+もっかい見た方がいい

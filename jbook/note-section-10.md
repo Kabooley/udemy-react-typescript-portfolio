@@ -451,4 +451,191 @@ window.addEventListener("message", (event) => {
 
 #### 112 Send code to iFrame
 
-もっかい見た方がいい
+```TypeScript
+// index.tsx
+const App = () => {
+  const ref = useRef<any>();
+  const iframe = useRef<any>();
+  const [input, setInput] = useState("");
+  const [code, setCode] = useState("");
+
+  const startService = async () => {
+    ref.current = await esbuild.startService({
+      worker: true,
+      wasmURL: "https://unpkg.com/esbuild-wasm@0.8.27/esbuild.wasm",
+    });
+  };
+  useEffect(() => {
+    startService();
+  }, []);
+
+  const onClick = async () => {
+    if (!ref.current) {
+      return;
+    }
+
+    const result = await ref.current.build({
+      entryPoints: ["index.js"],
+      bundle: true,
+      write: false,
+      plugins: [unpkgPathPlugin(), fetchPlugin(input)],
+      define: {
+        "process.env.NODE_ENV": '"production"',
+        global: "window",
+      },
+    });
+    // No longer needed.
+    // setCode(result.outputFiles[0].text);
+    // 
+    // Send code to 
+    // 
+    // HTMLIFrameElement.contentWindowは、
+    // iframeのwindowオブジェクトを返す
+    // このwindowオブジェクトを使ってiframeのドキュメントとその内部にアクセスできる
+    iframe.current.contentWindow.postMessage(result.outputFiles[0].text, '*');
+  };
+
+  // event listener for message from parent document.
+  const html = `
+    <html>
+      <head></head>
+      <body>
+        <div id="root"></div>
+        <script>
+          window.addEventListener('message', (event) => {
+            eval(event.data);
+          }, false);
+        </script>
+      </body>
+    </html>
+  `;
+
+
+  return (
+    <div>
+      <textarea
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+      ></textarea>
+      <div>
+        <button onClick={onClick}>Submit</button>
+      </div>
+      <pre>{code}</pre>
+      // ref refs iframe ref.
+      <iframe ref={iframe} sandbox="allow-scripts" srcDoc={html} />
+    </div>
+  );
+};
+
+```
+
+要は、親コンテキストから子コンテキストへ
+
+window.postMessage()を使って、バンドル済のコードを渡している
+
+iframeはそのメッセージを`message`イベントリスナで受信する
+
+親コンテキストはsubmitボタンがクリックされたら、
+
+useRefで参照しておいたiframeのwindowContentに対してpostMessage()するので
+
+iframeは親コンテキストからのメッセージを受信できる
+
+これでたとえば次を親コンテキストで記述してsubmitすると...
+
+```JavaScript
+import ReactDOM from 'react-dom';
+
+const App = <h1>Hi, there!</h1>;
+
+ReactDOM.render(
+  <App />,
+  document.querySelector('#root');
+);
+```
+
+期待通りに動作した！
+
+キャッシングも働いてとっても高速なのも確認できる
+
+#### 113 Highlighting Error
+
+いまのところたとえば文法が間違っているコードをiframeに渡しても
+
+iframe内には何も表示されない
+
+- try...catchを使う
+- 赤色強調表示させる
+
+```TypeScript
+// iframeの中身のhtml
+  const html = `
+    <html>
+      <head></head>
+      <body>
+        <div id="root"></div>
+        <script>
+          window.addEventListener('message', (event) => {
+            try {
+              eval(event.data);
+            }
+            catch(err) {
+              const root = document.querySelector('#root');
+              root.innerHTML = '<div style="color: red;">' + err + '</div>'
+            }
+          }, false);
+        </script>
+      </body>
+    </html>
+  `;
+
+```
+
+### 114: Issues with repeat execute.
+
+In case: `document.body.innerHTML = ""`をユーザが入力したら
+
+iframe内のhtmlのbodyないが消える
+
+In case: 上記のままつかってみたら
+
+前回の変更がそのまま今回入力した内容が反映される
+
+リセット機能を実装する必要がある
+
+#### 115: Implement Reset
+
+iframeのbody内のHTMLリセット機能を実装する
+
+現在のiframeの内容を取得する方法
+
+document.querySelector('iframe').srcDocで取得できる
+
+なので
+
+```TypeScript
+  const onClick = async () => {
+    if (!ref.current) {
+      return;
+    }
+
+    // NOTE: RESET every time they submit.
+    iframe.current.srcDoc = html;
+
+    // ...
+
+  }
+```
+
+とすれば
+
+ユーザが`document.querySelector('body').innerHTML = ""`したあとでも
+
+あらたにコードを書いてサブミットする限り実行を可能とする
+
+#### 177: Warning Fixup
+
+現状リロードするたびに警告が出る
+
+なのでこれを解決する
+

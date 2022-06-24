@@ -1,88 +1,87 @@
-import * as esbuild from "esbuild-wasm";
-import { useState, useEffect, useRef } from "react";
-import { createRoot } from "react-dom/client";
-import { unpkgPathPlugin } from "./plugins/unpkg-path-plugin";
-import { fetchPlugin } from "./plugins/fetch-plugin";
+import * as esbuild from 'esbuild-wasm';
+import { useState, useEffect, useRef } from 'react';
+import { createRoot } from 'react-dom/client';
+import { unpkgPathPlugin } from './plugins/unpkg-path-plugin';
+import { fetchPlugin } from './plugins/fetch-plugin';
 
 const App = () => {
-  const ref = useRef<any>();
-  const iframe = useRef<any>();
-  const [input, setInput] = useState("");
-  const [code, setCode] = useState("");
+    const ref = useRef<any>();
+    const iframe = useRef<any>();
+    const [input, setInput] = useState('');
 
-  const startService = async () => {
-    ref.current = await esbuild.startService({
-      worker: true,
-      wasmURL: "https://unpkg.com/esbuild-wasm@0.8.27/esbuild.wasm",
-    });
-  };
-  useEffect(() => {
-    startService();
-  }, []);
+    const startService = async () => {
+        ref.current = await esbuild.startService({
+            worker: true,
+            wasmURL: 'https://unpkg.com/esbuild-wasm@0.8.27/esbuild.wasm',
+        });
+    };
+    useEffect(() => {
+        startService();
+    }, []);
 
-  const onClick = async () => {
-    if (!ref.current) {
-      return;
-    }
+    const onClick = async () => {
+        if (!ref.current) {
+            return;
+        }
 
-    const result = await ref.current.build({
-      entryPoints: ["index.js"],
-      bundle: true,
-      write: false,
-      plugins: [unpkgPathPlugin(), fetchPlugin(input)],
-      define: {
-        "process.env.NODE_ENV": '"production"',
-        global: "window",
-      },
-    });
-    // No longer needed.
-    // setCode(result.outputFiles[0].text);
-    // 
-    // Send code to 
-    // 
-    // HTMLIFrameElement.contentWindowは、
-    // iframeのwindowオブジェクトを返す
-    // このwindowオブジェクトを使ってiframeのドキュメントとその内部にアクセスできる
-    iframe.current.contentWindow.postMessage(result.outputFiles[0].text, '*');
-  };
+        // NOTE: RESET every time they submit.
+        iframe.current.srcDoc = html;
 
-  const html = `
+        const result = await ref.current.build({
+            entryPoints: ['index.js'],
+            bundle: true,
+            write: false,
+            plugins: [unpkgPathPlugin(), fetchPlugin(input)],
+            define: {
+                'process.env.NODE_ENV': '"production"',
+                global: 'window',
+            },
+        });
+
+        iframe.current.contentWindow.postMessage(
+            result.outputFiles[0].text,
+            '*'
+        );
+    };
+
+    // event listener for message from parent document.
+    const html = `
     <html>
       <head></head>
       <body>
         <div id="root"></div>
         <script>
           window.addEventListener('message', (event) => {
-            eval(event.data);
+            try {
+              eval(event.data);
+            }
+            catch(err) {
+              const root = document.querySelector('#root');
+              root.innerHTML = '<div style="color: red;">' + err + '</div>'
+            }
           }, false);
         </script>
       </body>
     </html>
   `;
 
-
-  return (
-    <div>
-      <textarea
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-      ></textarea>
-      <div>
-        <button onClick={onClick}>Submit</button>
-      </div>
-      <pre>{code}</pre>
-      {/* Refs iframe ref variable */}
-      <iframe ref={iframe} sandbox="allow-scripts" srcDoc={html} />
-    </div>
-  );
+    return (
+        <div>
+            <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+            ></textarea>
+            <div>
+                <button onClick={onClick}>Submit</button>
+            </div>
+            {/* Refs iframe ref variable */}
+            <iframe ref={iframe} sandbox="allow-scripts" srcDoc={html} />
+        </div>
+    );
 };
 
-const html = `
-<h1> Local HTML Doc</h1>
-`;
-
-const _root = document.getElementById("root");
+const _root = document.getElementById('root');
 if (_root) {
-  const root = createRoot(_root);
-  root.render(<App />);
+    const root = createRoot(_root);
+    root.render(<App />);
 }

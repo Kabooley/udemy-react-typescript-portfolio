@@ -1,8 +1,9 @@
 import * as esbuild from 'esbuild-wasm';
 import { useState, useEffect, useRef } from 'react';
-import { createRoot } from 'react-dom/client';
+import ReactDOM from 'react-dom';
 import { unpkgPathPlugin } from './plugins/unpkg-path-plugin';
 import { fetchPlugin } from './plugins/fetch-plugin';
+import CodeEditor from './components/code-editor';
 
 const App = () => {
     const ref = useRef<any>();
@@ -24,8 +25,7 @@ const App = () => {
             return;
         }
 
-        // NOTE: RESET every time they submit.
-        iframe.current.srcDoc = html;
+        iframe.current.srcdoc = html;
 
         const result = await ref.current.build({
             entryPoints: ['index.js'],
@@ -38,13 +38,13 @@ const App = () => {
             },
         });
 
+        // setCode(result.outputFiles[0].text);
         iframe.current.contentWindow.postMessage(
             result.outputFiles[0].text,
             '*'
         );
     };
 
-    // event listener for message from parent document.
     const html = `
     <html>
       <head></head>
@@ -54,10 +54,10 @@ const App = () => {
           window.addEventListener('message', (event) => {
             try {
               eval(event.data);
-            }
-            catch(err) {
+            } catch (err) {
               const root = document.querySelector('#root');
-              root.innerHTML = '<div style="color: red;">' + err + '</div>'
+              root.innerHTML = '<div style="color: red;"><h4>Runtime Error</h4>' + err + '</div>';
+              console.error(err);
             }
           }, false);
         </script>
@@ -67,6 +67,7 @@ const App = () => {
 
     return (
         <div>
+            <CodeEditor />
             <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -74,14 +75,9 @@ const App = () => {
             <div>
                 <button onClick={onClick}>Submit</button>
             </div>
-            {/* Refs iframe ref variable */}
             <iframe ref={iframe} sandbox="allow-scripts" srcDoc={html} />
         </div>
     );
 };
 
-const _root = document.getElementById('root');
-if (_root) {
-    const root = createRoot(_root);
-    root.render(<App />);
-}
+ReactDOM.render(<App />, document.querySelector('#root'));

@@ -2,7 +2,7 @@
 
 #### 118 Issues with eager bundling
 
-submitボタンをなくして、
+submit ボタンをなくして、
 
 ユーザ入力内容を自動的に読み取ってバンドリングする方法に変えてみる
 
@@ -86,23 +86,23 @@ ReactDOM.render(<App />, document.querySelector('#root'));
 
 ```
 
-chromeのタスクマネージャからCPUの負荷状況をモニタしてみよう
+chrome のタスクマネージャから CPU の負荷状況をモニタしてみよう
 
 するとめっちゃ負荷がかかっているのが確認できる
 
 ということで入力にすぐ応じてバンドリングするのではなくて
 
-0.5秒ずつまってからバンドリングする方法で実装してみる
+0.5 秒ずつまってからバンドリングする方法で実装してみる
 
 #### 119 Quick Revert
 
 #### 120 Options for Open Source Editor
 
-3つの有力なオープンソースエディタがある
+3 つの有力なオープンソースエディタがある
 
-- Manoco Editor: 設定が難しいけど動くと完璧な編集機能を有する
+-   Manoco Editor: 設定が難しいけど動くと完璧な編集機能を有する
 
-Reactにこの難しい設定をやってくれるコンポーネントがあるらしい。
+React にこの難しい設定をやってくれるコンポーネントがあるらしい。
 
 ```bash
 $ npm i --save-exact @monaco-editor/react
@@ -129,7 +129,7 @@ export default CodeEditor;
 
 ```
 
-こいつをindex.tsxで取り込んで表示させる
+こいつを index.tsx で取り込んで表示させる
 
 #### 122 Configuration the Editor
 
@@ -142,7 +142,22 @@ export interface EditorProps {
 }
 ```
 
-<MonacoEdtor />のにわたせるpropsはEditorPropsで定義されている
+<MonacoEdtor />のにわたせる props は EditorProps で定義されている
 
-先のheightとか。
+先の height とか。
 
+#### 123 Eidtor Type Defs
+
+Monaco エディタのオプションをいじる
+
+先の`interface EditorProps`の`options`プロパティについて
+
+```TypeScript
+export interface IStandaloneEditorConstructionOptions extends IEditorConstructionOptions, IGlobalEditorOptions
+```
+
+という interface がもとになっている
+
+その前に monaco-editor の型定義ファイルをダウンロードする必要がある
+
+`npm i --save-exact monaco-editor`

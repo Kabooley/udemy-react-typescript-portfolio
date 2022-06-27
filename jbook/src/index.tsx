@@ -1,5 +1,6 @@
 import * as esbuild from 'esbuild-wasm';
 import { useState, useEffect, useRef } from 'react';
+import { createRoot } from 'react-dom/client';
 import ReactDOM from 'react-dom';
 import { unpkgPathPlugin } from './plugins/unpkg-path-plugin';
 import { fetchPlugin } from './plugins/fetch-plugin';
@@ -67,7 +68,7 @@ const App = () => {
 
     return (
         <div>
-            <CodeEditor />
+            <CodeEditor initialValue="const a = 1;" />
             <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -80,4 +81,10 @@ const App = () => {
     );
 };
 
-ReactDOM.render(<App />, document.querySelector('#root'));
+// ReactDOM.render(<App />, document.querySelector('#root'));
+
+const _root = document.getElementById("root");
+if (_root) {
+  const root = createRoot(_root);
+  root.render(<App />);
+}

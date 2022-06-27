@@ -152,12 +152,117 @@ Monaco エディタのオプションをいじる
 
 先の`interface EditorProps`の`options`プロパティについて
 
+optionsプロパティのインタフェイスは`IStandaloneEditorConstructionOptions` 
+
+上記のinterfaceは以下の継承である。
+
+`IEditorConstructionOptions`  extends `IEditorOptions` 
+
+講義のバージョンは取得できなかったので最新のバージョンを使っていることによる多少の違いがみられることは注意
+
+ひとまずのオプション
+
 ```TypeScript
-export interface IStandaloneEditorConstructionOptions extends IEditorConstructionOptions, IGlobalEditorOptions
+import MonacoEditor from '@monaco-editor/react';
+
+const CodeEditor = () => {
+    return (
+        <MonacoEditor
+            height="500px"
+            theme="vs-dark"
+            language="javascript"
+            options={{
+                wordWrap: 'on',
+                minimap: { enabled: false },
+                showUnused: false,
+                folding: false,
+                lineNumbersMinChars: 3,
+                fontSize: 16,
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+            }}
+        />
+    );
+};
+
+export default CodeEditor;
 ```
 
-という interface がもとになっている
+#### 125: setting the initial value
 
-その前に monaco-editor の型定義ファイルをダウンロードする必要がある
+エディタが初期値を受け取るようにする
 
-`npm i --save-exact monaco-editor`
+MonacoEditorには`defaultValue`というプロパティがあるが、
+
+親コンポーネントから受け取るようにしたいので
+
+valueプロパティにprops経由で渡すようにする
+
+```TypeScript
+import MonacoEditor from '@monaco-editor/react';
+
+interface CodeEditorProps {
+    initialValue: string;
+}
+
+const CodeEditor: React.FC<CodeEditorProps> = ({ initialValue }) => {
+
+    return (
+        <MonacoEditor
+            value={initialValue}
+            height="500px"
+            theme="vs-dark"
+            language="javascript"
+            options={{
+                wordWrap: 'on',
+                minimap: { enabled: false },
+                showUnused: false,
+                folding: false,
+                lineNumbersMinChars: 3,
+                fontSize: 16,
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+            }}
+        />
+    );
+};
+
+export default CodeEditor;
+```
+
+propsとしてinitialValueを受け取って、初期値としてエディタに記述する
+
+#### 126: Handlign editor change event
+
+エディタに入力されたコードを読み取ってバンドラに渡せるようにする
+
+https://github.com/suren-atoyan/monaco-react#get-value
+
+講義のバージョンと異なるため、editorDidMountプロパティが最新バージョンでは存在しない
+
+そのため公式に則って値を取得する方法として
+
+1. editorインスタンスから取得する
+2. onChangeプロパティから取得する
+
+しかし、講義ではonChangeを使うのは実装したいものと異なるため使わないことにしている
+
+だからかわりにeditorDidMountをつかっている
+
+なので両者の違いをはっきりさせないといけない
+
+https://github.com/react-monaco-editor/react-monaco-editor#properties
+
+- `editorDidMount`: 
+
+> エディタがマウントされたら発行されるイベント
+
+- `onChange`:
+
+> 現在のモデルが変更されたら発行されるイベント
+
+
+
+```TypeScript
+
+```

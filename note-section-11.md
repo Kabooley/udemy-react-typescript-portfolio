@@ -152,11 +152,11 @@ Monaco エディタのオプションをいじる
 
 先の`interface EditorProps`の`options`プロパティについて
 
-optionsプロパティのインタフェイスは`IStandaloneEditorConstructionOptions` 
+options プロパティのインタフェイスは`IStandaloneEditorConstructionOptions`
 
-上記のinterfaceは以下の継承である。
+上記の interface は以下の継承である。
 
-`IEditorConstructionOptions`  extends `IEditorOptions` 
+`IEditorConstructionOptions` extends `IEditorOptions`
 
 講義のバージョンは取得できなかったので最新のバージョンを使っていることによる多少の違いがみられることは注意
 
@@ -192,11 +192,11 @@ export default CodeEditor;
 
 エディタが初期値を受け取るようにする
 
-MonacoEditorには`defaultValue`というプロパティがあるが、
+MonacoEditor には`defaultValue`というプロパティがあるが、
 
 親コンポーネントから受け取るようにしたいので
 
-valueプロパティにprops経由で渡すようにする
+value プロパティに props 経由で渡すようにする
 
 ```TypeScript
 import MonacoEditor from '@monaco-editor/react';
@@ -230,7 +230,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ initialValue }) => {
 export default CodeEditor;
 ```
 
-propsとしてinitialValueを受け取って、初期値としてエディタに記述する
+props として initialValue を受け取って、初期値としてエディタに記述する
 
 #### 126: Handlign editor change event
 
@@ -238,31 +238,14 @@ propsとしてinitialValueを受け取って、初期値としてエディタに
 
 https://github.com/suren-atoyan/monaco-react#get-value
 
-講義のバージョンと異なるため、editorDidMountプロパティが最新バージョンでは存在しない
+講義のバージョンと異なるため、editorDidMount プロパティが最新バージョンでは存在しない
 
-そのため公式に則って値を取得する方法として
+その件について Q＆A で回答あり
 
-1. editorインスタンスから取得する
-2. onChangeプロパティから取得する
+https://www.udemy.com/course/react-and-typescript-build-a-portfolio-project/learn/lecture/24209728#questions/13823168
 
-しかし、講義ではonChangeを使うのは実装したいものと異なるため使わないことにしている
+最新バージョンでもなくて、講義で使っている`@monaco-editor/react v3.7.4 `でもなくて、
 
-だからかわりにeditorDidMountをつかっている
+`@monaco-editor/react v3.7.5 `を使うとうまくいくらしい。
 
-なので両者の違いをはっきりさせないといけない
-
-https://github.com/react-monaco-editor/react-monaco-editor#properties
-
-- `editorDidMount`: 
-
-> エディタがマウントされたら発行されるイベント
-
-- `onChange`:
-
-> 現在のモデルが変更されたら発行されるイベント
-
-
-
-```TypeScript
-
-```
+講義もあとでアップデートするらしい。

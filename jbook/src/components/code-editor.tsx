@@ -5,14 +5,15 @@ interface CodeEditorProps {
     onChange(value: string): void;
 }
 
-const CodeEditor: React.FC<CodeEditorProps> = ({onChange,  initialValue }) => {
-    const onEditorDidMount = () => {
-        
-    }    
-    
+const CodeEditor: React.FC<CodeEditorProps> = ({ onChange, initialValue }) => {
+    const onEditorDidMount = (getValue: () => string, monaco: Monaco) => {
+        console.log(getValue());
+    };
+
     return (
         <MonacoEditor
-        editorDidMount={onEditorDidMount}
+            // editorDidMount={onEditorDidMount}
+            onMount={onEditorDidMount}
             value={initialValue}
             height="500px"
             theme="vs-dark"

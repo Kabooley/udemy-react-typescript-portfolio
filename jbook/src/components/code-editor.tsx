@@ -3,6 +3,8 @@ import { useRef } from 'react';
 import MonacoEditor, { OnMount } from '@monaco-editor/react';
 import prettier from 'prettier';
 import parser from 'prettier/parser-babel';
+import codeShift from 'jscodeshift';
+import Highlighter from 'monaco-jsx-highlighter';
 
 interface CodeEditorProps {
     initialValue: string;
@@ -21,6 +23,17 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ onChange, initialValue }) => {
             onChange(editor.getValue());
         });
         editor.getModel()?.updateOptions({ tabSize: 2 });
+
+        // Initialize highlighter
+        const highlighter = new Highlighter(
+            // @ts-ignore
+            window.monaco,
+            codeShift,
+            editor
+        );
+
+        // Activate highlighting
+        highlighter.highLightOnDidChangeModelContent();
     };
 
     const onFormatClick = (): void => {
@@ -29,15 +42,16 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ onChange, initialValue }) => {
         // set the formatted value back in the editor
         if (!editorRef.current) return;
         const unformatted = editorRef.current.getModel().getValue();
-        const formatted = prettier.format(unformatted, {
-            parser: 'babel',
-            plugins: [parser],
-            useTabs: false,
-            semi: true,
-            singleQuote: true,
-        })
-        // 必ず文末に改行をもたらす機能を禁止させる
-        .replace(/\n$/, '');
+        const formatted = prettier
+            .format(unformatted, {
+                parser: 'babel',
+                plugins: [parser],
+                useTabs: false,
+                semi: true,
+                singleQuote: true,
+            })
+            // 必ず文末に改行をもたらす機能を禁止させる
+            .replace(/\n$/, '');
 
         editorRef.current.setValue(formatted);
     };

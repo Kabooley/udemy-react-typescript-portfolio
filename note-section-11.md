@@ -250,7 +250,6 @@ https://www.udemy.com/course/react-and-typescript-build-a-portfolio-project/lear
 
 講義もあとでアップデートするらしい。
 
-
 ## 講義とのバージョン違いに依る部分の乖離解消
 
 公式を基に作成
@@ -289,7 +288,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ onChange, initialValue }) => {
 export default CodeEditor;
 ```
 
-<MonacoEditor />のonMountプロパティの型は...
+<MonacoEditor />の onMount プロパティの型は...
 
 ```TypeScript
 
@@ -684,7 +683,7 @@ export interface IStandaloneCodeEditor extends ICodeEditor {
 
 ということで
 
-講義と同様、editorはgetModel()を持つ
+講義と同様、editor は getModel()を持つ
 
 #### 128~129: フォーマッティング機能の実装
 
@@ -692,7 +691,7 @@ export interface IStandaloneCodeEditor extends ICodeEditor {
 $ npm i prettier @types/prettier
 ```
 
-prettierをコード内で利用するには適切なパーサを用意しなくてはならない
+prettier をコード内で利用するには適切なパーサを用意しなくてはならない
 
 ```JavaScript
 import prettier from 'prettier';
@@ -701,19 +700,19 @@ import parser from 'prettier/parser-babel';
 
 ボタンを押したらフォーマットする機能にする
 
-なのでonClickハンドラ内部で
+なので onClick ハンドラ内部で
 
-- エディタ内のコードを取得する
-- コードをフォーマットする
-- フォーマットしたコードをエディタに戻す
+-   エディタ内のコードを取得する
+-   コードをフォーマットする
+-   フォーマットしたコードをエディタに戻す
 
 を実行しなくてはならない
 
-すでにuseRefでeditorを参照しているので
+すでに useRef で editor を参照しているので
 
-- `editorRef.current.getModel().getValue()`でコードを取得して
-- `prettier.format()`でフォーマット内容を定義して
-- `editorRef.current.getValue()`で加工したコードを返す
+-   `editorRef.current.getModel().getValue()`でコードを取得して
+-   `prettier.format()`でフォーマット内容を定義して
+-   `editorRef.current.getValue()`で加工したコードを返す
 
 ```TypeScript
 // code-editor.tsx
@@ -743,13 +742,28 @@ $ npm i bulmaswatch
 import 'bulmaswatch/superhero/bulmaswatch.min.css';
 ```
 
-あとはスタイリングを適用したいタグにclassNameを指定するだけ
-
-
+あとはスタイリングを適用したいタグに className を指定するだけ
 
 #### 132: 構文の強調表示の修正
 
-React構文のハイライト設定
+React 構文のハイライト設定
 
 ```bash
 $ npm i --save-exact monaco-jsx-highlighter@0.0.15 jscodeshift@0.11.0 @types/jscodeshift@0.7.2
+```
+
+ただし React バージョン関係上これまたいずれも最新のバージョンをインストールした
+
+-   jscodeshift
+
+> 渡された各ファイルに対して提供された transform を実行するランナーです。また、変換された（されていない）ファイルの数をまとめて出力する。
+> recast のラッパーで、異なる API を提供する。Recast は AST から AST への変換ツールであり、元のコードのスタイルを可能な限り維持しようとするものでもある。
+
+-   monaco-jsx-highligher
+
+monaco editor 上の JSX 構文をハイライトするライブラリを提供する
+babel を使っています
+
+`monacoJSXHighlighter.highlightOnDidChangeModelContent(debounceTime: number, afterHighlight: func, ...)`は、
+
+他の引数にまぎれてコールバックを渡すことができる

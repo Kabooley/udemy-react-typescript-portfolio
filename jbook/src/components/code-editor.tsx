@@ -4,7 +4,12 @@ import MonacoEditor, { OnMount } from '@monaco-editor/react';
 import prettier from 'prettier';
 import parser from 'prettier/parser-babel';
 import codeShift from 'jscodeshift';
+// NOTE: 下記のモジュールはtype.d.tsでdecalreしておくことが必須
 import Highlighter from 'monaco-jsx-highlighter';
+
+// For monaco-jsx-highlighter with using @monaco-editor/react
+import { parse } from '@babel/parser';
+import traverse from '@babel/traverse';
 
 interface CodeEditorProps {
     initialValue: string;
@@ -13,27 +18,28 @@ interface CodeEditorProps {
 
 const CodeEditor: React.FC<CodeEditorProps> = ({ onChange, initialValue }) => {
     const editorRef = useRef<any>(null);
-    // editorにanyしかつけられない...
     const onEditorDidMount: OnMount = (editor, monacoEditor): void => {
         editorRef.current = editor;
-        console.log(editor);
-        console.log(monacoEditor);
         editor.onDidChangeModelContent(() => {
             if (!editorRef.current) return;
             onChange(editor.getValue());
         });
+
+        // tab sizeを定義する
+        //
+        // `?.` - optional-chain: '.'とことなるのは、もしもeditorのオブジェクトチェーン上にgetModel()が無くてもエラーにならずにundefinedを返す点である
         editor.getModel()?.updateOptions({ tabSize: 2 });
 
-        // Initialize highlighter
+        // JSXをハイライトする
         const highlighter = new Highlighter(
             // @ts-ignore
             window.monaco,
             codeShift,
-            editor
+            // parse,
+            traverse,
+            monacoEditor
         );
-
-        // Activate highlighting
-        highlighter.highLightOnDidChangeModelContent(() => {});
+        highlighter.highlightOnDidChangeModelContent();
     };
 
     const onFormatClick = (): void => {

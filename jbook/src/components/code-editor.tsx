@@ -33,7 +33,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ onChange, initialValue }) => {
         );
 
         // Activate highlighting
-        highlighter.highLightOnDidChangeModelContent();
+        highlighter.highLightOnDidChangeModelContent(() => {});
     };
 
     const onFormatClick = (): void => {

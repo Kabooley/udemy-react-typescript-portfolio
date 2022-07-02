@@ -746,6 +746,12 @@ import 'bulmaswatch/superhero/bulmaswatch.min.css';
 
 #### 132: 構文の強調表示の修正
 
+NOTE: バージョン違いが大きく影響して先に進めない
+
+NOTE: UPDATED 講義の添付ファイルからあらたにjbookのディレクトリを作った
+
+バージョン違いを気にしなくていいけども...
+
 React 構文のハイライト設定
 
 ```bash

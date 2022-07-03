@@ -746,19 +746,17 @@ import 'bulmaswatch/superhero/bulmaswatch.min.css';
 
 #### 132: 構文の強調表示の修正
 
-NOTE: バージョン違いが大きく影響して先に進めない
+NOTE: この回はオプションである！！コードもなんだか変になるし、無視してもいいよ
 
-NOTE: UPDATED 講義の添付ファイルからあらたにjbookのディレクトリを作った
+だからバージョン違いの話は回避できるよ
 
-バージョン違いを気にしなくていいけども...
+まじめにやるとバージョン違いの問題からまったく動かなくなるよ
 
 React 構文のハイライト設定
 
 ```bash
 $ npm i --save-exact monaco-jsx-highlighter@0.0.15 jscodeshift@0.11.0 @types/jscodeshift@0.7.2
 ```
-
-ただし React バージョン関係上これまたいずれも最新のバージョンをインストールした
 
 -   jscodeshift
 
@@ -770,6 +768,102 @@ $ npm i --save-exact monaco-jsx-highlighter@0.0.15 jscodeshift@0.11.0 @types/jsc
 monaco editor 上の JSX 構文をハイライトするライブラリを提供する
 babel を使っています
 
-`monacoJSXHighlighter.highlightOnDidChangeModelContent(debounceTime: number, afterHighlight: func, ...)`は、
 
-他の引数にまぎれてコールバックを渡すことができる
+```TypeScript
+import './code-editor.css';
+import { useRef } from 'react';
+import MonacoEditor, { EditorDidMount } from '@monaco-editor/react';
+import prettier from 'prettier';
+import parser from 'prettier/parser-babel';
+
+// ハイライトモジュール
+// monaco-jsx-highlighterはdeclareする必要がある
+import codeShift from 'jscodeshift';
+import Highlighter from 'monaco-jsx-highlighter';
+
+interface CodeEditorProps {
+    initialValue: string;
+    onChange(value: string): void;
+}
+
+const CodeEditor: React.FC<CodeEditorProps> = ({ onChange, initialValue }) => {
+    const editorRef = useRef<any>();
+
+    const onEditorDidMount: EditorDidMount = (getValue, monacoEditor) => {
+        editorRef.current = monacoEditor;
+        monacoEditor.onDidChangeModelContent(() => {
+            onChange(getValue());
+        });
+
+        monacoEditor.getModel()?.updateOptions({ tabSize: 2 });
+
+        // NOTE: monacoを認識できないから（実行時に任せる）
+        const highlighter = new Highlighter(
+            // @ts-ignore
+            window.monaco,
+            codeShift,
+            monacoEditor
+        );
+
+        // エディタ上で1文字入力するたびにハイライタが動作するので
+        // それを抑えるためにコールバックを渡している
+        highlighter.highLightOnDidChangeModelContent(
+            () => {},
+            () => {},
+            undefined,
+            () => {}
+        );
+    };
+
+    const onFormatClick = () => {
+        // get current value from editor
+        const unformatted = editorRef.current.getModel().getValue();
+
+        // format that value
+        const formatted = prettier
+            .format(unformatted, {
+                parser: 'babel',
+                plugins: [parser],
+                useTabs: false,
+                semi: true,
+                singleQuote: true,
+            })
+            .replace(/\n$/, '');
+
+        // set the formatted value back in the editor
+        editorRef.current.setValue(formatted);
+    };
+
+    return (
+        <div className="editor-wrapper">
+            <button
+                className="button button-format is-primary is-small"
+                onClick={onFormatClick}
+            >
+                Format
+            </button>
+            <MonacoEditor
+                editorDidMount={onEditorDidMount}
+                value={initialValue}
+                theme="dark"
+                language="javascript"
+                height="500px"
+                options={{
+                    wordWrap: 'on',
+                    minimap: { enabled: false },
+                    showUnused: false,
+                    folding: false,
+                    lineNumbersMinChars: 3,
+                    fontSize: 16,
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                }}
+            />
+        </div>
+    );
+};
+
+export default CodeEditor;
+```
+
+これでeditor上のReactのJSXがハイライトされるようになった

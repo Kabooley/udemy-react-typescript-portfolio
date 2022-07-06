@@ -2,7 +2,9 @@ import './resizable.css';
 import { ResizableBox } from 'react-resizable';
 
 interface ResizableProps {
-    direction: 'horizontal' | 'vertcal';
+    direction: 'horizontal' | 'vertical';
+    // NOTE: childrenをpropsとして受け取るには明示的に`children: ReactNode`のように型定義をする必要がある
+    children: React.ReactNode;
 }
 
 const Resizable: React.FC<ResizableProps> = ({ direction, children }) => {

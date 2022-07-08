@@ -14,7 +14,7 @@ npm package: React-Resizable
 
 https://www.npmjs.com/package/react-resizable
 
-componentをリサイズしてくれるラッパーコンポーネントを作った
+component をリサイズしてくれるラッパーコンポーネントを作った
 
 ```TypeScript
 import './resizable.css';
@@ -38,7 +38,7 @@ export default Resizable;
 
 リサイズ可能にするために`<Resizable>`コンポーネントでラップする
 ハンドルをつけるために`resizeHandler`プロパティを追加する（方向は配列で渡すこと）
-見た目は自分でCSSつくれ
+見た目は自分で CSS つくれ
 
 とのこと
 
@@ -69,19 +69,19 @@ export default Resizable;
 
 ```
 
-#### 144 リサイズイベントがiframeへ送信されてしまう問題
+#### 144 リサイズイベントが iframe へ送信されてしまう問題
 
-リサイズハンドルをつかんだ後そのままiframeへホバーすると
+リサイズハンドルをつかんだ後そのまま iframe へホバーすると
 
 リサイズイベント(ドラッグイベント)が終了していないのがわかる
 
-つまり、ドラッグを開始してサイズ変更してマウスをiframeへ移動すると
+つまり、ドラッグを開始してサイズ変更してマウスを iframe へ移動すると
 
-ドラッグイベントはiframeへ送信されてしまっているらしい
+ドラッグイベントは iframe へ送信されてしまっているらしい
 
-iframeからマウスを外すと、ドラッグイベントが再開される
+iframe からマウスを外すと、ドラッグイベントが再開される
 
-解決方法：ドラッグ中はiframeの上に他の要素を作る
+解決方法：ドラッグ中は iframe の上に他の要素を作る
 
 ```TypeScript
 
@@ -103,6 +103,7 @@ const Preview: React.FC<PreviewProps> = ({ code }) => {
     );
 };
 ```
+
 ```CSS
 .preview-wrapper {
     position: relative;
@@ -121,11 +122,11 @@ const Preview: React.FC<PreviewProps> = ({ code }) => {
 
 ```
 
-これでonDragイベントはiframeへは送信されなくなった
+これで onDrag イベントは iframe へは送信されなくなった
 
-さらに、`.react-draggable-transparent-selection`というCSSセレクタを付与すると
+さらに、`.react-draggable-transparent-selection`という CSS セレクタを付与すると
 
-onDragイベント中だけ要素が有効になってonDragが終わると自動的に要素が無効になる
+onDrag イベント中だけ要素が有効になって onDrag が終わると自動的に要素が無効になる
 
 ```CSS
 .preview-wrapper {
@@ -143,4 +144,124 @@ onDragイベント中だけ要素が有効になってonDragが終わると自�
     /* 透明にしておく */
     opacity: 0;
 }
+```
+
+#### 146 Limitation of vertical resizing
+
+ResizableBox のプロパティ、maxConstraints を指定する
+
+```TypeScript
+const Resizable: React.FC<ResizableProps> = ({ direction, children }) => {
+    return (
+        <ResizableBox
+        // 水平方向に無限に、垂直方向にブラウザウィンドウの90％までに
+            maxConstraints={[ Infinity, window.innerHeight * 0.9 ]}
+            // 最小縮小サイズも指定する
+            minConstraints={[Infinity, 24]}
+            width={Infinity} height={300} resizeHandles={['s']}
+        >
+            {children}
+        </ResizableBox>
+    );
+};
+
+export default Resizable;
+```
+#### 147: Resizing Horizontary
+
+CodeEditorコンポーネントを別のResizableコンポーネントでラップする
+
+```TypeScript
+const CodeCell = () => {
+    // ...
+
+    return (
+        <Resizable direction="vertical">
+            <div
+                style={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'row',
+                }}
+            >
+                // 水平方向リサイズコンポーネント
+                <Resizable direction="horizontal">
+                    <CodeEditor
+                        initialValue="const a = 1;"
+                        onChange={(value) => setInput(value)}
+                    />
+                </Resizable>
+                <div>
+                    <button onClick={onClick}>Submit</button>
+                </div>
+                <Preview code={code} />
+            </div>
+        </Resizable>
+    );
+};
+```
+
+Resizableコンポーネントを水平方向でも使えるようにする
+
+```TypeScript
+// 変更前
+// 
+interface ResizableProps {
+    direction: 'horizontal' | 'vertical';
+    children: React.ReactNode;
+}
+
+const Resizable: React.FC<ResizableProps> = ({ direction, children }) => {
+    return (
+        <ResizableBox 
+            minConstraints={[Infinity, 24]}
+            maxConstraints={[ Infinity, window.innerHeight * 0.9 ]}
+            width={Infinity} height={300} resizeHandles={['s']}
+        >
+            {children}
+        </ResizableBox>
+    );
+};
+
+// 変更後
+// 
+import './resizable.css';
+import { ResizableBox, ResizableBoxProps } from 'react-resizable';
+
+interface ResizableProps {
+    // ...
+}
+
+const Resizable: React.FC<ResizableProps> = ({ direction, children }) => {
+    let resizableProps: ResizableBoxProps;
+
+    if(direction === 'horizontal') {
+        resizableProps = {
+            minConstraints: [window.innerWidth * 0.2, Infinity],
+            maxConstraints: [window.innerWidth * 0.75, Infinity],
+            width: window.innerWidth * 0.75,
+            height: Infinity,
+            resizeHandles: ['s'],
+        }
+    }
+    else {
+        resizableProps = {
+            minConstraints: [Infinity, 24],
+            maxConstraints: [Infinity, window.innerHeight * 0.9],
+            width: Infinity,
+            height: 300,
+            resizeHandles: ['s'],
+        }
+    }
+    return (
+        <ResizableBox
+            {...resizableProps}
+        >
+            {children}
+        </ResizableBox>
+    );
+};
+
+export default Resizable;
+
 ```

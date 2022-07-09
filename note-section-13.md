@@ -265,3 +265,139 @@ const Resizable: React.FC<ResizableProps> = ({ direction, children }) => {
 export default Resizable;
 
 ```
+
+しかしこのままだとなぜか水平方向のリサイズハンドルが頓珍漢なところへ置かれてしまうので
+
+```TypeScript
+const Resizable: React.FC<ResizableProps> = ({ direction, children }) => {
+    let resizableProps: ResizableBoxProps;
+
+    if (direction === 'horizontal') {
+        resizableProps = {
+            // 特別にスタイルを設けるためにclassNameを追加して
+            className: 'resize-horizontal',
+            minConstraints: [window.innerWidth * 0.2, Infinity],
+            maxConstraints: [window.innerWidth * 0.75, Infinity],
+            width: window.innerWidth * 0.75,
+            height: Infinity,
+            resizeHandles: ['e'],
+        };
+    } else {
+        // ...
+```
+
+```CSS
+/* resizable.css */
+
+.resize-horizontal {
+    display: flex;
+    flex-direction: row;
+}
+
+/* code-editor.css */
+.editor-wrapper {
+    position: relative;
+    height: 100%;
+    width: calc(100% - 10px);
+}
+```
+
+これで水平方向へ移動できるようになった
+
+しかしこのままだとプレビュー画面の白色部分がリサイズに応じて拡縮してくれないので
+
+```CSS
+/* preview.css */
+.preview-wrapper {
+    position: relative;
+    height: 100%;
+    /* added */
+    flex-grow: 1;
+}
+
+.preview-wrapper iframe {
+    height: 100%;
+    background-color: fff;
+    /* added */
+    width: 100%;
+}
+
+```
+flex-growで主軸方向の寸法に対して伸長係数１にして、
+
+iframeの幅を100%にすることで拡縮に対してすべてiframeが横幅を埋めるようになる
+
+#### 153: An Oddity around the resizer
+
+ウィンドウを水平方向に縮小するとプレイビューウィンドウが消える
+
+これを解決していく
+
+ResizableコンポーネントのminConstraintなどのプロパティはリサイズハンドルを動かしているときに、window.innerWidthなどを再計算するけど
+
+ウィンドウのリサイズ時には当然何もしない
+
+そのためにウィンドウのリサイズ時に反応できるようにリスナを用意する
+
+useEffect(, [])でresizeハンドラを用意する
+
+リスナが反応するたびにstateでwindowのinnerHeight, innerWidthを更新する
+
+ResizableBOxのプロパティはそのstateからとるようにする
+
+これで常に更新される
+
+```TypeScript
+import './resizable.css';
+import { useEffect, useState } from 'react';
+import { ResizableBox, ResizableBoxProps } from 'react-resizable';
+
+interface ResizableProps {
+    // ...
+}
+
+const Resizable: React.FC<ResizableProps> = ({ direction, children }) => {
+    const [innerWidth, setInnerWidth] = useState<number>(window.innerWidth);
+    const [innerHeight, setInnerHeight] = useState<number>(window.innerHeight);
+    let resizableProps: ResizableBoxProps;
+
+    useEffect(() => {
+        const listener = () => {
+            setInnerWidth(window.innerWidth);
+            setInnerHeight(window.innerHeight);
+        };
+        window.addEventListener('resize', listener);
+        return () => {
+            window.removeEventListener('resize', listener);
+        };
+    }, []);
+
+    if (direction === 'horizontal') {
+        resizableProps = {
+            className: 'resize-horizontal',
+            minConstraints: [innerWidth * 0.2, Infinity],
+            maxConstraints: [innerWidth * 0.75, Infinity],
+            width: innerWidth * 0.75,
+            height: Infinity,
+            resizeHandles: ['e'],
+        };
+    } else {
+        resizableProps = {
+            minConstraints: [Infinity, 24],
+            maxConstraints: [Infinity, innerHeight * 0.9],
+            width: Infinity,
+            height: 300,
+            resizeHandles: ['s'],
+        };
+    }
+    return <ResizableBox {...resizableProps}>{children}</ResizableBox>;
+};
+
+export default Resizable;
+```
+
+現状のままだとパフォーマンス上の問題がある
+
+- ウィンドウのリサイズに一瞬遅れて処理される
+- リサイズした後にウィンドウのリサイズをすると戻される
+

@@ -1,4 +1,5 @@
 import './resizable.css';
+import { useEffect, useState } from 'react';
 import { ResizableBox, ResizableBoxProps } from 'react-resizable';
 
 interface ResizableProps {
@@ -8,33 +9,40 @@ interface ResizableProps {
 }
 
 const Resizable: React.FC<ResizableProps> = ({ direction, children }) => {
+    const [innerWidth, setInnerWidth] = useState<number>(window.innerWidth);
+    const [innerHeight, setInnerHeight] = useState<number>(window.innerHeight);
     let resizableProps: ResizableBoxProps;
 
-    if(direction === 'horizontal') {
+    useEffect(() => {
+        const listener = () => {
+            setInnerWidth(window.innerWidth);
+            setInnerHeight(window.innerHeight);
+        };
+        window.addEventListener('resize', listener);
+        return () => {
+            window.removeEventListener('resize', listener);
+        };
+    }, []);
+
+    if (direction === 'horizontal') {
         resizableProps = {
-            minConstraints: [window.innerWidth * 0.2, Infinity],
-            maxConstraints: [window.innerWidth * 0.75, Infinity],
-            width: window.innerWidth * 0.75,
+            className: 'resize-horizontal',
+            minConstraints: [innerWidth * 0.2, Infinity],
+            maxConstraints: [innerWidth * 0.75, Infinity],
+            width: innerWidth * 0.75,
             height: Infinity,
-            resizeHandles: ['s'],
-        }
-    }
-    else {
+            resizeHandles: ['e'],
+        };
+    } else {
         resizableProps = {
             minConstraints: [Infinity, 24],
-            maxConstraints: [Infinity, window.innerHeight * 0.9],
+            maxConstraints: [Infinity, innerHeight * 0.9],
             width: Infinity,
             height: 300,
             resizeHandles: ['s'],
-        }
+        };
     }
-    return (
-        <ResizableBox
-            {...resizableProps}
-        >
-            {children}
-        </ResizableBox>
-    );
+    return <ResizableBox {...resizableProps}>{children}</ResizableBox>;
 };
 
 export default Resizable;

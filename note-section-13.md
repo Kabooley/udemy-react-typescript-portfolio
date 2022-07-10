@@ -401,3 +401,30 @@ export default Resizable;
 - ウィンドウのリサイズに一瞬遅れて処理される
 - リサイズした後にウィンドウのリサイズをすると戻される
 
+一瞬遅れて処理させる：
+
+ウィンドウのリサイズ時に100ms待つようにする
+
+```TypeScript
+// resizable.ts
+
+    useEffect(() => {
+        let timer: NodeJS.Timeout;
+        const listener = () => {
+            if(timer) {
+                clearTimeout(timer);
+            }
+            timer = setTimeout(() => {
+                setInnerWidth(window.innerWidth);
+                setInnerHeight(window.innerHeight);
+            }, 100);
+        };
+        window.addEventListener('resize', listener);
+        return () => {
+            window.removeEventListener('resize', listener);
+        };
+    }, []);
+```
+
+リサイズが元に戻ってしまう問題：
+

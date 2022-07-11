@@ -428,3 +428,174 @@ export default Resizable;
 
 リサイズが元に戻ってしまう問題：
 
+修正後
+
+```TypeScript
+// Resizable.tsx
+import './resizable.css';
+import { useEffect, useState } from 'react';
+import { ResizableBox, ResizableBoxProps } from 'react-resizable';
+
+interface ResizableProps {
+    direction: 'horizontal' | 'vertical';
+    children: React.ReactNode;
+}
+
+const Resizable: React.FC<ResizableProps> = ({ direction, children }) => {
+    const [innerWidth, setInnerWidth] = useState<number>(window.innerWidth);
+    const [innerHeight, setInnerHeight] = useState<number>(window.innerHeight);
+    // Added
+    const [width, setWidth] = useState<number>(window.innerWidth * 0.75);
+    let resizableProps: ResizableBoxProps;
+
+    useEffect(() => {
+        let timer: NodeJS.Timeout;
+        const listener = () => {
+            if(timer) {
+                clearTimeout(timer);
+            }
+            timer = setTimeout(() => {
+                setInnerWidth(window.innerWidth);
+                setInnerHeight(window.innerHeight);
+                // Add new condition
+                if(window.innerWidth * 0.75 < width) {
+                    setWidth(window.innerWidth * 0.75);
+                }
+            }, 100);
+        };
+        window.addEventListener('resize', listener);
+        return () => {
+            window.removeEventListener('resize', listener);
+        };
+    }, [width]);
+
+    if (direction === 'horizontal') {
+        resizableProps = {
+            className: 'resize-horizontal',
+            minConstraints: [innerWidth * 0.2, Infinity],
+            maxConstraints: [innerWidth * 0.75, Infinity],
+            // width: innerWidth * 0.75,
+            // width is determined by width state
+            width: width,
+            height: Infinity,
+            resizeHandles: ['e'],
+            // When end of resizing, set width
+            onResizeStop: (event, data) => {
+                setWidth(data.size.width);
+            }
+        };
+    } else {
+        resizableProps = {
+            minConstraints: [Infinity, 24],
+            maxConstraints: [Infinity, innerHeight * 0.9],
+            width: Infinity,
+            height: 300,
+            resizeHandles: ['s'],
+        };
+    }
+    return <ResizableBox {...resizableProps}>{children}</ResizableBox>;
+};
+
+export default Resizable;
+```
+
+[width]
+
+#### 160: Add Debouncing Logic
+
+エディタでコードを入力したら1秒後くらいに自動的にプレビューでバンドル結果を出力するようにする
+
+
+次を実装する：
+
+- ユーザが入力した後にのみバンドルするようにすること
+- バンドルはその後0.5秒ほど停止するようにすること
+
+具体的に:
+
+ユーザがエディタで何か入力する --> `input`stateが更新される
+更新後1秒以内に...
+ユーザがエディタで何か入力する --> `input`stateが更新される
+更新後1秒以内に...
+ユーザがエディタで何か入力する --> `input`stateが更新される
+更新後1秒以内に...
+ユーザがエディタで何か入力する --> `input`stateが更新される
+更新後1秒以内に...
+ユーザがエディタで何か入力する --> `input`stateが更新される
+更新後1秒以内に...
+ユーザがエディタで何か入力する --> `input`stateが更新される
+更新後1秒以内に...
+
+`input`更新がない状態が1秒以上経過することで、バンドリングを開始する
+
+時間の管理はsetTimeoutで行う。つまり、
+
+ユーザの入力 --> input state更新 --> timerを1秒でセット
+ユーザの入力 --> input state更新 --> 先のtimerをキャンセルして、改めてtimerを1秒でセット
+ユーザの入力 --> input state更新 --> 先のtimerをキャンセルして、改めてtimerを1秒でセット
+ユーザの入力 --> input state更新 --> 先のtimerをキャンセルして、改めてtimerを1秒でセット
+ユーザの入力 --> input state更新 --> 先のtimerをキャンセルして、改めてtimerを1秒でセット
+
+もしも1秒以上経過したら、バンドリング
+
+
+```TypeScript
+import { useState, useEffect } from 'react';
+import CodeEditor from '../components/code-editor';
+import Preview from '../components/preview';
+import bundle from '../bundler';
+import Resizable from './resizable';
+
+const CodeCell = () => {
+    const [code, setCode] = useState<string>('');
+    const [input, setInput] = useState<string>('');
+
+    // New Addition.
+    useEffect(() => {
+        console.log("useEffect");
+        const timer = setTimeout(async () => {
+            console.log('set timeout');
+            const output = await bundle(input);
+            setCode(output);
+        }, 1000);
+
+        return () => {
+            console.log('clear timeout');
+            clearTimeout(timer);
+        }
+    }, [input]);
+
+    return (
+        <Resizable direction="vertical">
+            <div
+                style={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'row',
+                }}
+            >
+                <Resizable direction="horizontal">
+                    <CodeEditor
+                        initialValue="const a = 1;"
+                        onChange={(value) => setInput(value)}
+                    />
+                </Resizable>
+                <Preview code={code} />
+            </div>
+        </Resizable>
+    );
+};
+
+export default CodeCell;
+```
+
+useEffectを使ったタイマーの解説：
+
+inputの更新が発生
+
+setTimeoutがセットされる
+
+1秒の経過立つ前に次のinputの更新があると、すぐさまuseEffectはreturnして、
+
+次のuseEffectの呼び出しに移動する
+

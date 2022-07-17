@@ -327,7 +327,6 @@ export default Preview;
 そこで発生したエラーはcatchがされない。
 
 講義の非同期処理はここを利用している。
-
 つまり、
 
 同期処理は必ずcatchがキャッチしてくれるけど、非同期エラーは必ずcatchはcatchしてくれないから、結果必ずwindow.addEventListener('error')がそのエラーをキャッチする。
@@ -347,3 +346,5 @@ export default Preview;
 - 非同期エラーはwindow.addEventaListener()だけがcatchする
 
 とすみわけさせることができる
+
+

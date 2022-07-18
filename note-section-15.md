@@ -62,6 +62,97 @@ const TextEditor: React.FC = () => {
 export default TextEditor;
 ```
 
+#### 171: Conditional Toggle
+
+MDEditor のどこをクリックしても MDEditor.Markdown に戻ってしまう。
+
+これだとマークダウンを編集できない。
+
+なので click の内側と外側を区別させる
+
+```TypeScript
+import { useState, useEffect, useRef } from 'react';
+import MDEditor from '@uiw/react-md-editor';
+
+const TextEditor: React.FC = () => {
+    // Added ref
+    const ref = useRef<HTMLDivElement | null>(null);
+    const [editing, setEditing] = useState<boolean>(true);
+
+    useEffect(() => {
+        const listener = (event: MouseEvent) => {
+            if(ref.current && event.target && ref.current.contains(event.target as Node)) {
+                // Element clicked on is inside editor.
+                return;
+            }
+            // Element clicked on is outside editor.
+            setEditing(false);
+        };
+        document.addEventListener('click', listener, { capture: true });
+
+        return () => {
+            document.removeEventListener('click', listener, { capture: true });
+        };
+    }, []);
+
+    if (editing) {
+        return (
+          // Ref points MDEditor wrapper.
+            <div ref={ref} >
+                <MDEditor />
+            </div>
+        );
+    }
+    return (
+        <div
+            onClick={() => {
+                console.log('set true');
+                setEditing(true);
+            }}
+        >
+            <MDEditor.Markdown source={'# Header'} />
+        </div>
+    );
+};
+
+export default TextEditor;
+```
+
+いつもの自分ならば、`event.composedPath`に並ぶ要素のうちに内側の要素が含まれるのか調べる方法をとっていた。
+
+これは自分にとって新しい方法。
+
+ポイントは、`ref.current.contains(event.target as Node))`である
+
+event.target（つまり、クリックされた要素）が ref のなかの要素かどうかをこの少ないコードで表現しているのである
+
+```TypeScript
+    function useRef<T>(intialValue: T): MutableRefObject<T>;
+    function useRef<T = undefined>(): MutableRefObject<T | undefined>;
+    interface MutableRefObject<T> {
+        current: T;
+    }
+```
+
+ということでcurrentはジェネリクス型の型を取る。
+
+HTMLDivElementを指定したのでつまりElement、元をたどればNodeである
+
+ref.currentは、クリックされたときにDOMを取得していて、
+
+そのDOMにevent.targetは含まれているか.contains()で調べているのである。
+
+#### 172~: Why cursor is broken?
+
+Bulma CSSクラス名と、@uiw/react-md-editorのCSSクラス名の衝突によって引き起こされている問題
+
+新たにcssファイルをtext-editor.tsx用に用意する
+
+```CSS
+/* text-editor.css */
+.
+```
+
 #### JavaScript Tips: EventTarget.addEventListener の第三引数(options)
 
 ## 参考
